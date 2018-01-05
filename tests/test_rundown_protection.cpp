@@ -258,10 +258,10 @@ void test_multithread_3()
     atomic_bool shutdown_flag(false);
 
     vector<thread*> threads(THREAD_COUNT);
-    for (thread*& thr : threads) {
-        thr = new thread([&]() {
+    for (size_t i = 0; i < THREAD_COUNT; ++i) {
+        threads[i] = new thread([i, &start_event, &rundown, &totSuccCnt, &shutdown_flag]() {
 
-            std::mt19937_64 rd(/*seed*/(std::random_device())());
+            std::mt19937_64 rd(/*seed*/i * i * i);
             const std::mt19937_64::result_type threshold = rd.min() + (rd.max() - rd.min()) / 1000000;
             std::function<bool()> rand_stop = [&rd, threshold]() {
                 return (rd() < threshold);
