@@ -320,6 +320,52 @@ void test_multithread_3()
 
 }
 
+void test_acquire_speed()
+{
+    const int ACQUIRE_COUNT = 1000000000;
+    rundown_protection rundown;
+    timer tmr;
+    for (int i = 0; i < ACQUIRE_COUNT; ++i) {
+        rundown.try_acquire();
+    }
+
+    const double elapsed = tmr.elapsed();
+    printf("(single thread) try_acquire() %d times: %.3lf sec (%.2lf ns/request)\n",
+           ACQUIRE_COUNT, elapsed, elapsed * 1000 * 1000 * 1000 / ACQUIRE_COUNT);
+}
+
+void test_acquire_speed_mt()
+{
+    const int THREAD_COUNT = 4;
+    const int ACQUIRE_COUNT = 100000000;
+    static_assert(ACQUIRE_COUNT % THREAD_COUNT == 0, "it should be accurate!");
+
+    std::vector<thread*> threads(THREAD_COUNT);
+    rundown_protection rundown;
+    atomic_bool start_flag(false);
+
+    for (auto& thr : threads) {
+        thr = new std::thread([&]() {
+            while (!start_flag) sched_yield();
+
+            for (int i = 0; i < ACQUIRE_COUNT / THREAD_COUNT; ++i) {
+                rundown.try_acquire();
+            }
+        });
+    }
+
+    timer tmr;
+    start_flag.store(true);
+
+    for (auto& thr : threads) {
+        thr->join();
+    }
+
+    const double elapsed = tmr.elapsed();
+    printf("(%d threads) try_acquire() %d times: %.3lf sec (%.2lf ns/request)\n",
+           THREAD_COUNT, ACQUIRE_COUNT, elapsed, elapsed * 1000 * 1000 * 1000 / ACQUIRE_COUNT);
+}
+
 
 
 BEGIN_TESTS_DECLARATION(test_rundown_protection)
@@ -330,4 +376,6 @@ DECLARE_TEST(test_basic_4)
 DECLARE_TEST(test_multithread_1)
 DECLARE_TEST(test_multithread_2)
 DECLARE_TEST(test_multithread_3)
+DECLARE_TEST(test_acquire_speed)
+DECLARE_TEST(test_acquire_speed_mt)
 END_TESTS_DECLARATION

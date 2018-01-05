@@ -21,7 +21,8 @@ struct test_t
 
 
 #define BEGIN_TESTS_DECLARATION(name)   \
-    void name() { extern test_t __tests_##name##__[]; __do_test__(__tests_##name##__); } \
+    extern test_t __tests_##name##__[]; \
+    void name() { __do_test__(__tests_##name##__); } \
     test_t __tests_##name##__[] = { \
         { __FILE__, nullptr, nullptr, nullptr, nullptr },
 
