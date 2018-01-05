@@ -3,11 +3,6 @@
 #include <atomic>
 #include <sched.h>
 
-#ifndef COMMON_LOCK_SPIN_RETRY
-#define COMMON_LOCK_SPIN_RETRY      ((uint64_t)1000)
-#endif
-static_assert(COMMON_LOCK_SPIN_RETRY >= 0, "Invalid COMMON_LOCK_SPIN_RETRY value");
-
 
 class lock
 {
@@ -32,12 +27,6 @@ public:
 
     void acquire()
     {
-        for (uint_fast64_t retryCnt = 0; retryCnt < COMMON_LOCK_SPIN_RETRY; ++retryCnt) {
-            if (try_acquire()) {
-                return;
-            }
-        }
-
         while (!try_acquire()) {
             const int result = sched_yield();
 #ifdef UNITTEST
