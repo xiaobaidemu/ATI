@@ -75,7 +75,7 @@
     <ClInclude Include="..\src\common\lock.h" />
     <ClInclude Include="..\src\common\rundown_protection.h" />
     <ClInclude Include="..\src\common\timer.h" />
-    <ClInclude Include="..\tests\driver.h" />
+    <ClInclude Include="..\tests\test.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tests\driver.cpp" />

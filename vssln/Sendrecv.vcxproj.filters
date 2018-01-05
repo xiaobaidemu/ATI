@@ -12,9 +12,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\tests\driver.h">
-      <Filter>tests</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\common\common.h">
       <Filter>src\common</Filter>
     </ClInclude>
@@ -26,6 +23,9 @@
     </ClInclude>
     <ClInclude Include="..\src\common\timer.h">
       <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\tests\test.h">
+      <Filter>tests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

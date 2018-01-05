@@ -1,4 +1,4 @@
-#include "driver.h"
+#include "test.h"
 #include <common/rundown_protection.h>
 #include <common/timer.h>
 
@@ -262,7 +262,7 @@ void test_multithread_3()
         thr = new thread([&]() {
 
             std::mt19937_64 rd(/*seed*/(std::random_device())());
-            const std::mt19937_64::result_type threshold = rd.min() + (rd.max() - rd.min()) / 10000000;
+            const std::mt19937_64::result_type threshold = rd.min() + (rd.max() - rd.min()) / 1000000;
             std::function<bool()> rand_stop = [&rd, threshold]() {
                 return (rd() < threshold);
             };
@@ -322,7 +322,7 @@ void test_multithread_3()
 
 
 
-BEGIN_TESTS_DECLARATION
+BEGIN_TESTS_DECLARATION(test_rundown_protection)
 DECLARE_TEST(test_basic_1)
 DECLARE_TEST(test_basic_2)
 DECLARE_TEST(test_basic_3)
