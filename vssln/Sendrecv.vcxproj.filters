@@ -27,6 +27,12 @@
     <ClInclude Include="..\tests\test.h">
       <Filter>tests</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\common\assertion.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\log.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tests\driver.cpp">
