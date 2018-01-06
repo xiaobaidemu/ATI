@@ -17,10 +17,10 @@
 
 #define ASSERT_RESULT(expr) \
     do { \
-        const auto __expr = (expr); \
-        if (__expr < 0) { \
+        const auto __ASSERT_RESULT_expr = (expr); \
+        if (__ASSERT_RESULT_expr < 0) { \
             ERROR("ASSERT_RESULT() failed: %s = %lld, %s line %d\n", \
-                  #expr, (long long)__expr, __FILE__, __LINE__); \
+                  #expr, (long long)__ASSERT_RESULT_expr, __FILE__, __LINE__); \
             throw 0; \
         }\
     } while(false)

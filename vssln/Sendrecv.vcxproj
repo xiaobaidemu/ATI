@@ -77,9 +77,19 @@
     <ClInclude Include="..\src\common\log.h" />
     <ClInclude Include="..\src\common\rundown_protection.h" />
     <ClInclude Include="..\src\common\timer.h" />
+    <ClInclude Include="..\src\connection.h" />
+    <ClInclude Include="..\src\environment.h" />
+    <ClInclude Include="..\src\listener.h" />
+    <ClInclude Include="..\src\net.h" />
+    <ClInclude Include="..\src\sendrecv.h" />
     <ClInclude Include="..\tests\test.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\common\common.cpp" />
+    <ClCompile Include="..\src\connection.cpp" />
+    <ClCompile Include="..\src\environment.cpp" />
+    <ClCompile Include="..\src\listener.cpp" />
+    <ClCompile Include="..\src\net.cpp" />
     <ClCompile Include="..\tests\driver.cpp" />
     <ClCompile Include="..\tests\test_lock.cpp" />
     <ClCompile Include="..\tests\test_rundown_protection.cpp" />

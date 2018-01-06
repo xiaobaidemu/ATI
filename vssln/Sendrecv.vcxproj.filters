@@ -33,6 +33,21 @@
     <ClInclude Include="..\src\common\log.h">
       <Filter>src\common</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\net.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\sendrecv.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\connection.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\environment.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\listener.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tests\driver.cpp">
@@ -43,6 +58,21 @@
     </ClCompile>
     <ClCompile Include="..\tests\test_rundown_protection.cpp">
       <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\connection.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\environment.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\listener.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\common.cpp">
+      <Filter>src\common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
