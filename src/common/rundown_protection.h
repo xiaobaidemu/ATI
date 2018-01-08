@@ -54,9 +54,11 @@ public:
     bool try_acquire()
     {
         // At most times, we expect try_acquire() will succeed.
-        // So do not use the following check.
-        
-        //if (shutdown_required()) {
+        // Yet, we may use a unstrict shutdown check (do not involve `lock xchg`)
+        // but this check is just a waste of time!
+
+        //const counter_t tmp = _active_count.load(std::memory_order_relaxed);
+        //if (tmp & SHUTDOWN_MASK) {
         //    return false;
         //}
 

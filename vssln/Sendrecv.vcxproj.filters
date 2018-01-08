@@ -48,6 +48,9 @@
     <ClInclude Include="..\src\listener.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\common\tsqueue.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\tests\driver.cpp">

@@ -77,6 +77,7 @@
     <ClInclude Include="..\src\common\log.h" />
     <ClInclude Include="..\src\common\rundown_protection.h" />
     <ClInclude Include="..\src\common\timer.h" />
+    <ClInclude Include="..\src\common\tsqueue.h" />
     <ClInclude Include="..\src\connection.h" />
     <ClInclude Include="..\src\environment.h" />
     <ClInclude Include="..\src\listener.h" />

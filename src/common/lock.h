@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <sched.h>
 
 
@@ -42,6 +43,13 @@ public:
         TEST_ASSERT(is_locked());
 #endif
         _locked.store(false);
+    }
+
+    void acquire_run_release(const std::function<void()> func)
+    {
+        acquire();
+        func();
+        release();
     }
 
     ~lock()
