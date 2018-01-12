@@ -74,9 +74,8 @@ void socket_listener::process_epoll_listen_fd(const uint32_t events)
     }
     else {
         socket_connection* conn = new socket_connection((socket_environment*)_environment, connfd, remote_ep);
-        if (OnAccept) {
-            OnAccept(this, conn);
-        }
+        ASSERT(OnAccept);
+        OnAccept(this, conn);
     }
 
     _rundown.release();

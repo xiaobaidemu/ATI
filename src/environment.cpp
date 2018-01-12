@@ -25,7 +25,7 @@ socket_environment::socket_environment()
     _loop_thread = new std::thread([this]() {
         main_loop();
 
-        // TODO: Do some cleaning work
+        // Do some cleaning work
         CCALL(close(_notification_event_fd));
         _notification_event_fd = INVALID_FD;
 

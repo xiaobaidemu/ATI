@@ -38,8 +38,7 @@ socket_connection::socket_connection(socket_environment* env, const int connfd, 
 
 void socket_connection::init(const bool isAccepted)
 {
-    // TODO: A lot of things to do
-
+    // Make connection fd non-blocking
     ASSERT_RESULT(_conn_fd);
     MAKE_NONBLOCK(_conn_fd);
 
@@ -61,7 +60,7 @@ void socket_connection::init(const bool isAccepted)
     _rundown.register_callback([&]() {
 
         const int error = ECANCELED;  // TODO: Define what error code?
-        fragment frag(nullptr, 0);
+        fragment frag;
         while (_sending_queue.try_pop(&frag)) {
             ASSERT(frag.curr_length() > 0);
 
@@ -140,7 +139,6 @@ void socket_connection::process_epoll_conn_fd(const uint32_t events)
             }
 
             if ((events & EPOLLERR) || (events & EPOLLHUP) || (events & EPOLLRDHUP)) {
-                // TODO: How to deal with this?
 
                 if (!(events & EPOLLERR) && !(events & EPOLLHUP) && (events & EPOLLRDHUP)) {
                     // Only EPOLLRDHUP is reported. Invoke OnHup
@@ -149,6 +147,7 @@ void socket_connection::process_epoll_conn_fd(const uint32_t events)
                     }
                 }
                 else {
+                    // TODO: How to deal with this?
                     FATAL("socket_connection(fd=%d): events = %d. TODO!!! (OnHup?)\n", _conn_fd, events);
                     ASSERT(0);
                 }

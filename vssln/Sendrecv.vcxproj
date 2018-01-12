@@ -103,6 +103,9 @@
     <ClCompile Include="..\tests\test_socket_echo_multi_thread.cpp" />
     <ClCompile Include="..\tests\test_socket_echo_simple.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\TODO.md" />
+  </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile />
     <ClCompile>
