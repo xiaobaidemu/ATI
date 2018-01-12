@@ -12,6 +12,8 @@ enum connection_status
 class connection
 {
 public:
+    connection(const connection&) = delete;
+    connection(connection&&) = delete;
     virtual ~connection() = default;
 
     std::function<void (connection* conn)> OnConnect = nullptr;
@@ -22,13 +24,13 @@ public:
     std::function<void (connection* conn, const int error)> OnHup = nullptr;
     std::function<void (connection* conn)> OnClose = nullptr;
 
-
-protected:
-    explicit connection(environment* env);
     virtual bool async_send(const void* buffer, const size_t length) = 0;
     virtual bool async_close() = 0;
     virtual bool async_connect() = 0;
     virtual bool start_receive() = 0;
+
+protected:
+    explicit connection(environment* env);
 
 protected:
     environment* _environment;
@@ -44,7 +46,7 @@ private:
     socket_connection(socket_environment* env, const char* connect_ip, const uint16_t port);
     socket_connection(socket_environment* env, const char* socket_file);
     socket_connection(socket_environment* env, const int connfd, const endpoint& remote_ep);
-    void init();
+    void init(const bool isAccepted);
     void process_epoll_conn_fd(const uint32_t events);
     void process_notification(const event_data::event_type evtype);
     void do_send();
@@ -57,6 +59,7 @@ public:
     bool start_receive() override;
 
 private:
+    volatile bool _close_finished = false;
     rundown_protection _rundown;
     std::atomic<connection_status> _status;
 

@@ -50,6 +50,8 @@ void socket_listener::init()
         ASSERT_RESULT(_listen_fd);
         CCALL(close(_listen_fd));
         _listen_fd = INVALID_FD;
+
+        _close_finished = true;
     });
 }
 
@@ -97,6 +99,9 @@ void socket_listener::process_notification(const event_data::event_type evtype)
 
 bool socket_listener::start_accept()
 {
+    // Ensure OnAccept is set. Otherwise accepted connection goes nowhere.
+    ASSERT(OnAccept != nullptr);
+
     // start_accept() can only be called once
     bool expect = false;
     if (!_start_accept_required.compare_exchange_strong(expect, true)) {

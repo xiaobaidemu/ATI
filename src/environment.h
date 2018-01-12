@@ -32,6 +32,7 @@ private:
     void epoll_modify(fd_data* fddata, const uint32_t events) const;
     void main_loop();
     void push_and_trigger_notification(const event_data& notification);
+    static std::string epoll_events_to_string(const uint32_t events);
 
 private:
     std::atomic_bool _dispose_required;

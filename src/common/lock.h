@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef UNITTEST
+#define UNITTEST_NO_DOTEST
+#include <tests/test.h>
+#endif
+
 #include <atomic>
 #include <functional>
 #include <sched.h>

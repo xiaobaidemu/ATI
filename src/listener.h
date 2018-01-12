@@ -47,5 +47,6 @@ private:
     std::atomic_bool _start_accept_required;
     std::atomic_bool _close_required;
 
+    volatile bool _close_finished = false;
     rundown_protection _rundown;
 };

@@ -14,8 +14,7 @@ socket_connection::socket_connection(socket_environment* env, const char* remote
 {
     _conn_fd = CCALL(socket(_remote_endpoint.family(), SOCK_STREAM, IPPROTO_TCP));
 
-    _status.store(CONNECTION_NOT_CONNECTED);
-    init();
+    init(false);
 }
 
 socket_connection::socket_connection(socket_environment* env, const char* socket_file)
@@ -24,26 +23,39 @@ socket_connection::socket_connection(socket_environment* env, const char* socket
 {
     _conn_fd = CCALL(socket(_remote_endpoint.family(), SOCK_STREAM, 0));
 
-    _status.store(CONNECTION_NOT_CONNECTED);
-    init();
+    init(false);
 }
 
 socket_connection::socket_connection(socket_environment* env, const int connfd, const endpoint& remote_ep)
     : connection(env),
       _remote_endpoint(remote_ep)
 {
-    ASSERT(connfd);
+    ASSERT_RESULT(connfd);
     _conn_fd = connfd;
 
-    _status.store(CONNECTION_CONNECTED);
-    init();
+    init(true);
 }
 
-void socket_connection::init()
+void socket_connection::init(const bool isAccepted)
 {
     // TODO: A lot of things to do
 
+    ASSERT_RESULT(_conn_fd);
     MAKE_NONBLOCK(_conn_fd);
+
+    _conn_fddata = fd_data(this, _conn_fd);
+
+    if (isAccepted) {
+        _status.store(CONNECTION_CONNECTED);
+    }
+    else {
+        _status.store(CONNECTION_NOT_CONNECTED);
+    }
+
+    // Add to epoll if this is an accepted connection
+    if (isAccepted) {
+        ((socket_environment*)_environment)->epoll_add(&_conn_fddata, EPOLLOUT | EPOLLERR | EPOLLRDHUP | EPOLLET);
+    }
 
     // Register rundown protection callback
     _rundown.register_callback([&]() {
@@ -57,7 +69,7 @@ void socket_connection::init()
             if (OnSendError) {
                 OnSendError(this, (void*)frag.original_buffer(), frag.original_length(), frag.original_length() - frag.curr_length(), error);
             }
-
+             
             // This was acquired in async_send(), now release.
             _rundown.release();
         }
@@ -72,12 +84,15 @@ void socket_connection::init()
         ASSERT_RESULT(_conn_fd);
         CCALL(close(_conn_fd));
         _conn_fd = INVALID_FD;
+
+        _close_finished = true;
     });
 }
 
 void socket_connection::process_epoll_conn_fd(const uint32_t events)
 {
     if (!_rundown.try_acquire()) {
+        WARN("socket_connection(fd=%d) _rundown.try_acquire() failed\n", _conn_fd);
         return;
     }
 
@@ -126,8 +141,17 @@ void socket_connection::process_epoll_conn_fd(const uint32_t events)
 
             if ((events & EPOLLERR) || (events & EPOLLHUP) || (events & EPOLLRDHUP)) {
                 // TODO: How to deal with this?
-                FATAL("socket_connection(fd=%d): events = %d. TODO!!! (OnHup?)\n", _conn_fd, events);
-                ASSERT(0);
+
+                if (!(events & EPOLLERR) && !(events & EPOLLHUP) && (events & EPOLLRDHUP)) {
+                    // Only EPOLLRDHUP is reported. Invoke OnHup
+                    if (OnHup) {
+                        OnHup(this, 0);
+                    }
+                }
+                else {
+                    FATAL("socket_connection(fd=%d): events = %d. TODO!!! (OnHup?)\n", _conn_fd, events);
+                    ASSERT(0);
+                }
             }
             if (events & EPOLLOUT) {
                 do_send();
@@ -149,6 +173,9 @@ void socket_connection::process_notification(const event_data::event_type evtype
     switch (evtype) {
         case event_data::EVENTTYPE_CONNECTION_CLOSE: {
             // We do not need to do anything
+
+            // This was acquired in async_close()
+            _rundown.release();
             break;
         }
         case event_data::EVENTTYPE_CONNECTION_CONNECT_FAILED: {
@@ -160,6 +187,9 @@ void socket_connection::process_notification(const event_data::event_type evtype
             if (OnConnectError) {
                 OnConnectError(this, _immediate_connect_error);
             }
+
+            // This was acquired in async_connect()
+            _rundown.release();
             break;
         }
         case event_data::EVENTTYPE_CONNECTION_ASYNC_SEND: {
@@ -171,8 +201,6 @@ void socket_connection::process_notification(const event_data::event_type evtype
             ASSERT(0);
         }
     }
-
-    _rundown.release();
 }
 
 void socket_connection::do_send()
@@ -187,6 +215,7 @@ void socket_connection::do_send()
         if (sentCnt < 0) {
             const int error = errno;
             if (error == EAGAIN || error == EWOULDBLOCK) {
+                TRACE("socket_connection(fd=%d) sending buffer full. break.\n", _conn_fd);
                 break;
             }
 
@@ -200,6 +229,9 @@ void socket_connection::do_send()
         }
         else if (sentCnt > 0) {
             frag->forward((size_t)sentCnt);
+            INFO("socket_connection(fd=%d) sent %lld (total %lld / required %lld)\n", 
+                _conn_fd, (long long)sentCnt, (long long)frag->original_length() - frag->curr_length(), (long long)frag->original_length());
+
             if (frag->curr_length() == 0) {
                 if (OnSend) {
                     OnSend(this, (void*)frag->original_buffer(), frag->original_length());
@@ -232,14 +264,19 @@ void socket_connection::do_receive()
             }
         }
         else if (recvCnt == 0) {
-            if (OnHup) {
-                OnHup(this, 0);
-            }
+            // NOTE: We don't call OnHup here.
+            // As EPOLLRDHUP will be reported to epoll, leave OnHup there. 
+
+            //if (OnHup) {
+            //    OnHup(this, 0);
+            //}
+            break;
         }
         else {
             // now: recvCnt < 0
             const int error = errno;
             if (error == EAGAIN || error == EWOULDBLOCK) {
+                TRACE("socket_connection(fd=%d) all pending data received. break.\n", _conn_fd);
                 break;
             }
             else {
@@ -302,6 +339,8 @@ bool socket_connection::async_connect()
         return false;
     }
 
+    ASSERT_RESULT(_conn_fd);
+
     // Try connect asynchronously
     _immediate_connect_error = 0;
     const int result = connect(_conn_fd, _remote_endpoint.data(), _remote_endpoint.socklen());
@@ -323,7 +362,6 @@ bool socket_connection::async_connect()
     // Add _conn_fd to epoll (if not failed synchronously)
     // DO NOT include EPOLLIN (modify epoll to add EPOLLIN in start_receive())
     if (_immediate_connect_error == 0) {
-        _conn_fddata = fd_data(this, _conn_fd);
         ((socket_environment*)_environment)->epoll_add(&_conn_fddata, EPOLLOUT | EPOLLERR | EPOLLRDHUP | EPOLLET);
     }
 
@@ -342,6 +380,8 @@ bool socket_connection::start_receive()
     }
 
     // Modify _conn_fd in epoll£º add EPOLLIN
+    ASSERT_RESULT(_conn_fd);
+    ASSERT(_conn_fddata.fd == _conn_fd);
     ((socket_environment*)_environment)->epoll_modify(&_conn_fddata, EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLRDHUP | EPOLLET);
 
     _rundown.release();

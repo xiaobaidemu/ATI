@@ -31,8 +31,8 @@ public:
         : type(FDTYPE_SOCKET_NOTIFICATION_EVENT), fd(eventfd), owner(env) { }
     fd_data(socket_connection* conn, const int connfd) 
         : type(FDTYPE_SOCKET_CONNECTION), fd(connfd), owner(conn) { }
-    fd_data(socket_listener* listen, const int listenfd)
-        : type(FDTYPE_SOCKET_CONNECTION), fd(listenfd), owner(listen) { }
+    fd_data(socket_listener* lis, const int listenfd)
+        : type(FDTYPE_SOCKET_LISTENER), fd(listenfd), owner(lis) { }
 };
 
 
@@ -43,6 +43,7 @@ struct event_data
         EVENTOWNER_ENVIRONMENT,
         EVENTOWNER_CONNECTION,
         EVENTOWNER_LISTENER,
+        EVENTOWNER_MAX,
     };
 
     enum event_type
@@ -53,6 +54,7 @@ struct event_data
         EVENTTYPE_CONNECTION_ASYNC_SEND,
         EVENTTYPE_CONNECTION_CONNECT_FAILED,
         EVENTTYPE_LISTENER_CLOSE,
+        EVENTTYPE_MAX,
     };
 
     event_type type;

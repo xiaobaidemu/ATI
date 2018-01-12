@@ -80,5 +80,11 @@
     <ClCompile Include="..\src\common\common.cpp">
       <Filter>src\common</Filter>
     </ClCompile>
+    <ClCompile Include="..\tests\test_socket_echo_simple.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\tests\test_socket_echo_many_round.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

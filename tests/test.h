@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef UNITTEST
 #define UNITTEST
+#endif
 
 #include <common/timer.h>
 #include <functional>
@@ -22,7 +24,7 @@ struct test_t
 
 #define BEGIN_TESTS_DECLARATION(name)   \
     extern test_t __tests_##name##__[]; \
-    void name() { __do_test__(__tests_##name##__); } \
+    void __do_test__##name() { __do_test__(__tests_##name##__); } \
     test_t __tests_##name##__[] = { \
         { __FILE__, nullptr, nullptr, nullptr, nullptr },
 
@@ -47,6 +49,7 @@ struct test_t
         } \
     } while(false)
 
+#ifndef UNITTEST_NO_DOTEST
 
 static void __do_test__(const test_t* tests)
 {
@@ -104,3 +107,5 @@ static void __do_test__(const test_t* tests)
 
     }
 }
+
+#endif

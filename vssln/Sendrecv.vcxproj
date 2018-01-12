@@ -64,13 +64,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetExt />
-    <IncludePath>$(ProjectDir)..\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\src;$(ProjectDir)..;$(IncludePath)</IncludePath>
     <RemoteCCompileToolExe>g++-7</RemoteCCompileToolExe>
     <RemoteCppCompileToolExe>g++-7</RemoteCppCompileToolExe>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetExt />
-    <IncludePath>$(ProjectDir)..\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\src;$(ProjectDir)..;$(IncludePath)</IncludePath>
     <RemoteCCompileToolExe>g++-7</RemoteCCompileToolExe>
     <RemoteCppCompileToolExe>g++-7</RemoteCppCompileToolExe>
   </PropertyGroup>
@@ -99,11 +99,14 @@
     <ClCompile Include="..\tests\driver.cpp" />
     <ClCompile Include="..\tests\test_lock.cpp" />
     <ClCompile Include="..\tests\test_rundown_protection.cpp" />
+    <ClCompile Include="..\tests\test_socket_echo_many_round.cpp" />
+    <ClCompile Include="..\tests\test_socket_echo_simple.cpp" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile />
     <ClCompile>
-      <AdditionalIncludeDirectories>$(RemoteProjectDir)/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(RemoteProjectDir);$(RemoteProjectDir)/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>UNITTEST</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalOptions>-pthread %(AdditionalOptions)</AdditionalOptions>
@@ -112,7 +115,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile />
     <ClCompile>
-      <AdditionalIncludeDirectories>$(RemoteProjectDir)/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(RemoteProjectDir);$(RemoteProjectDir)/src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>UNITTEST;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalOptions>-pthread %(AdditionalOptions)</AdditionalOptions>

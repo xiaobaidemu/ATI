@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef UNITTEST
+#define UNITTEST_NO_DOTEST
+#include <tests/test.h>
+#endif
+
 #include <type_traits>
 #include <functional>
 #include <atomic>
@@ -81,6 +86,12 @@ public:
     void release()
     {
         const counter_t remain = --_active_count;
+
+#ifdef UNITTEST
+        const std::make_signed<counter_t>::type sign = (std::make_signed<counter_t>::type)remain << 2 >> 2;
+        //printf("remain count: %lld\n", (long long)sign);
+        TEST_ASSERT(sign >= 0);
+#endif
 
         if (remain == SHUTDOWN_MASK) {
             // (remain & SHUTDOWN_MASK) && !(remain & CALLBACK_MASK) && ((remain & ACTIVE_COUNT_MASK) == 0)
