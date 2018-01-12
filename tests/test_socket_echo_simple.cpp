@@ -101,6 +101,7 @@ static void set_client_connection_callbacks(connection* client_conn)
     };
     client_conn->OnConnectError = [&](connection*, const int error) {
         ERROR("[Client] OnConnectError: %d (%s)\n", error, strerror(error));
+        TEST_FAIL();
     };
     client_conn->OnReceive = [&](connection* conn, const void* buffer, const size_t length) {
         ASSERT(memcmp(buffer, dummy_data + client_receive_bytes, length) == 0);
@@ -139,6 +140,7 @@ void test_echo_simple()
     };
     lis->OnAcceptError = [&](listener*, const int error) {
         ERROR("[ServerListener] OnAcceptError: %d (%s)\n", error, strerror(error));
+        TEST_FAIL();
     };
     lis->OnClose = [&](listener*) {
         SUCC("[ServerListener] OnClose\n");

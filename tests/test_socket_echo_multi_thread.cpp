@@ -7,16 +7,17 @@
 
 #define LOCAL_HOST          ("127.0.0.1")
 #define LOCAL_PORT          (8801)
-#define ECHO_DATA_LENGTH    ((size_t)1024 * 1024 * 256)  // 256MB
+#define ECHO_DATA_LENGTH    ((size_t)1024 * 1024 * 32)  // 32MB
 #define ECHO_DATA_ROUND     ((size_t)32)
+#define THREAD_COUNT        (32)
 
 static char dummy_data[ECHO_DATA_LENGTH];
 
-static size_t client_receive_bytes = 0;
-static size_t client_send_bytes = 0;
-static size_t server_send_bytes = 0;
-static size_t server_receive_bytes = 0;
-static std::mutex client_close;
+static size_t client_receive_bytes[THREAD_COUNT];
+static size_t client_send_bytes[THREAD_COUNT];
+static std::atomic_int_fast64_t server_send_bytes;
+static std::atomic_int_fast64_t server_receive_bytes;
+static std::mutex client_close[THREAD_COUNT];
 static std::mutex listener_close;
 
 static void set_server_connection_callbacks(connection* server_conn)
@@ -43,10 +44,10 @@ static void set_server_connection_callbacks(connection* server_conn)
     };
     server_conn->OnReceive = [&](connection* conn, const void* buffer, const size_t length) {
 
-        server_receive_bytes += length;
-        SUCC("[ServerConnection] OnReceive: %lld (total: %lld)\n", (long long)length, (long long)server_receive_bytes);
-        if (server_receive_bytes == ECHO_DATA_LENGTH * ECHO_DATA_ROUND) {
-            INFO("[ServerConnection] All echo data received.\n");
+        const long long recvd = (server_receive_bytes += length);
+        SUCC("[ServerConnection] OnReceive: %lld (total: %lld)\n", (long long)length, (long long)recvd);
+        if (recvd == ECHO_DATA_LENGTH * ECHO_DATA_ROUND * THREAD_COUNT) {
+            INFO("[ServerConnection] All echo data received. (%lld)\n", recvd);
         }
 
         void* tmp_buf = malloc(length + sizeof(TRADEMARK));
@@ -59,10 +60,10 @@ static void set_server_connection_callbacks(connection* server_conn)
     };
     server_conn->OnSend = [&](connection* conn, const void* buffer, const size_t length) {
 
-        server_send_bytes += length;
-        SUCC("[ServerConnection] OnSend: %lld (total: %lld)\n", (long long)length, (long long)server_send_bytes);
-        if (server_send_bytes == ECHO_DATA_LENGTH * ECHO_DATA_ROUND) {
-            INFO("[ServerConnection] All echo back data sent.\n");
+        const long long sent = (server_send_bytes += length);
+        SUCC("[ServerConnection] OnSend: %lld (total: %lld)\n", (long long)length, (long long)sent);
+        if (sent == ECHO_DATA_LENGTH * ECHO_DATA_ROUND * THREAD_COUNT) {
+            INFO("[ServerConnection] All echo back data sent. (%lld)\n", sent);
             conn->async_close();
         }
 
@@ -80,33 +81,33 @@ static void set_server_connection_callbacks(connection* server_conn)
 }
 
 
-static void set_client_connection_callbacks(connection* client_conn)
+static void set_client_connection_callbacks(connection* client_conn, const int tid)
 {
-    client_conn->OnClose = [&](connection*) {
-        SUCC("[Client] OnClose\n");
-        client_close.unlock();
+    client_conn->OnClose = [tid](connection*) {
+        SUCC("[Client:%d] OnClose\n", tid);
+        client_close[tid].unlock();
     };
-    client_conn->OnHup = [&](connection*, const int error) {
+    client_conn->OnHup = [tid](connection*, const int error) {
         if (error == 0) {
-            SUCC("[Client] OnHup: %d (%s)\n", error, strerror(error));
+            SUCC("[Client:%d] OnHup: %d (%s)\n", tid, error, strerror(error));
         }
         else {
-            ERROR("[Client] OnHup: %d (%s)\n", error, strerror(error));
+            ERROR("[Client:%d] OnHup: %d (%s)\n", tid, error, strerror(error));
         }
     };
-    client_conn->OnConnect = [&](connection* conn) {
-        SUCC("[Client] OnConnect\n");
+    client_conn->OnConnect = [tid](connection* conn) {
+        SUCC("[Client:%d] OnConnect\n", tid);
         conn->start_receive();
 
         bool success = conn->async_send(dummy_data, ECHO_DATA_LENGTH);
         TEST_ASSERT(success);
     };
-    client_conn->OnConnectError = [&](connection*, const int error) {
-        ERROR("[Client] OnConnectError: %d (%s)\n", error, strerror(error));
+    client_conn->OnConnectError = [tid](connection*, const int error) {
+        ERROR("[Client:%d] OnConnectError: %d (%s)\n", tid, error, strerror(error));
         TEST_FAIL();
     };
-    client_conn->OnReceive = [&](connection* conn, const void* buffer, const size_t length) {
-        const size_t start = client_receive_bytes % ECHO_DATA_LENGTH;
+    client_conn->OnReceive = [tid](connection* conn, const void* buffer, const size_t length) {
+        const size_t start = client_receive_bytes[tid] % ECHO_DATA_LENGTH;
         if (start + length <= ECHO_DATA_LENGTH) {
             ASSERT(memcmp(buffer, dummy_data + start, length) == 0);
         }
@@ -117,38 +118,40 @@ static void set_client_connection_callbacks(connection* client_conn)
             ASSERT(memcmp((char*)buffer + tmp, dummy_data + 0, length - tmp) == 0);
         }
 
-        client_receive_bytes += length;
-        SUCC("[Client] OnReceive: %lld (total: %lld)\n", (long long)length, client_receive_bytes);
-        if (client_receive_bytes == ECHO_DATA_LENGTH * ECHO_DATA_ROUND) {
-            INFO("[Client] All echo back data received. now client async_close()\n");
+        client_receive_bytes[tid] += length;
+        SUCC("[Client:%d] OnReceive: %lld (total: %lld)\n", tid, (long long)length, client_receive_bytes[tid]);
+        if (client_receive_bytes[tid] == ECHO_DATA_LENGTH * ECHO_DATA_ROUND) {
+            INFO("[Client:%d] All echo back data received. now client async_close()\n", tid);
             conn->async_close();
         }
     };
-    client_conn->OnSend = [&](connection* conn, const void* buffer, const size_t length) {
+    client_conn->OnSend = [tid](connection* conn, const void* buffer, const size_t length) {
         ASSERT(length == ECHO_DATA_LENGTH);
-        client_send_bytes += length;
+        client_send_bytes[tid] += length;
 
-        SUCC("[Client] OnSend: %lld (%lld rounds)\n", (long long)length, (long long)client_send_bytes / ECHO_DATA_LENGTH);
-        //fprintf(stderr, "[Client] OnSend: %lld (%lld rounds)\n", (long long)length, (long long)client_send_bytes / ECHO_DATA_LENGTH);
+        SUCC("[Client:%d] OnSend: %lld (%lld rounds)\n", tid, (long long)length, (long long)client_send_bytes[tid] / ECHO_DATA_LENGTH);
+        //fprintf(stderr, "[Client:%d] OnSend: %lld (%lld rounds)\n", tid, (long long)length, (long long)client_send_bytes[tid] / ECHO_DATA_LENGTH);
 
-        if (client_send_bytes < ECHO_DATA_LENGTH * ECHO_DATA_ROUND) {
+        if (client_send_bytes[tid] < ECHO_DATA_LENGTH * ECHO_DATA_ROUND) {
             const bool success = conn->async_send(dummy_data, ECHO_DATA_LENGTH);
             TEST_ASSERT(success);
         }
     };
-    client_conn->OnSendError = [&](connection*, const void* buffer, const size_t length, const size_t sent_length, const int error) {
-        ERROR("[Client] OnSendError: %d (%s). all %lld, sent %lld\n", error, strerror(error), (long long)length, (long long)sent_length);
+    client_conn->OnSendError = [tid](connection*, const void* buffer, const size_t length, const size_t sent_length, const int error) {
+        ERROR("[Client:%d] OnSendError: %d (%s). all %lld, sent %lld\n", tid, error, strerror(error), (long long)length, (long long)sent_length);
         TEST_FAIL();
     };
 }
 
-void test_echo_many_round()
+void test_echo_multi_thread()
 {
     for (size_t i = 0; i < ECHO_DATA_LENGTH; ++i) {
         dummy_data[i] = (char)(unsigned char)i;
     }
 
-    client_close.lock();
+    for (int tid = 0; tid < THREAD_COUNT; ++tid) {        
+        client_close[tid].lock();
+    }
     listener_close.lock();
 
     socket_environment env;
@@ -169,12 +172,24 @@ void test_echo_many_round()
     bool success = lis->start_accept();
     TEST_ASSERT(success);
 
-    socket_connection* client = env.create_connection(LOCAL_HOST, LOCAL_PORT);
-    set_client_connection_callbacks(client);
-    success = client->async_connect();
-    TEST_ASSERT(success);
+    std::thread threads[THREAD_COUNT];
+    for (int tid = 0; tid < THREAD_COUNT; ++tid) {
+        threads[tid] = std::thread([tid, &env]() {
+            socket_connection* client = env.create_connection(LOCAL_HOST, LOCAL_PORT);
+            set_client_connection_callbacks(client, tid);
 
-    client_close.lock();
+            // Connect to server every 4 ms (just give server a break)
+            std::this_thread::sleep_for(std::chrono::milliseconds(tid * 4));
+            const bool success = client->async_connect();
+            TEST_ASSERT(success);
+
+            client_close[tid].lock();
+        });
+    }
+
+    for (int tid = 0; tid < THREAD_COUNT; ++tid) {
+        threads[tid].join();
+    }
 
     lis->async_close();
     listener_close.lock();
@@ -183,6 +198,6 @@ void test_echo_many_round()
 }
 
 
-BEGIN_TESTS_DECLARATION(test_socket_echo_many_round)
-DECLARE_TEST(test_echo_many_round)
+BEGIN_TESTS_DECLARATION(test_socket_echo_multi_thread)
+DECLARE_TEST(test_echo_multi_thread)
 END_TESTS_DECLARATION
