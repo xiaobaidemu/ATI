@@ -319,9 +319,12 @@ bool socket_connection::async_send(const void* buffer, const size_t length)
         return false;
     }
 
-    _sending_queue.push(fragment(buffer, length));
-    
-    ((socket_environment*)_environment)->push_and_trigger_notification(event_data::connection_async_send(this));
+    const size_t new_size = _sending_queue.push(fragment(buffer, length));
+
+    // Trigger notification only if this is the only fragment to send
+    if (new_size == 1) {
+        ((socket_environment*)_environment)->push_and_trigger_notification(event_data::connection_async_send(this));
+    }
 
     return true;
 }

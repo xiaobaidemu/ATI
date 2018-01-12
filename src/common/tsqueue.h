@@ -7,11 +7,14 @@ template<typename T>
 class tsqueue
 {
 public:
-    void push(const T& item)
+    size_t push(const T& item)
     {
+        size_t new_size;
         _lock.acquire_run_release([&] {
             _queue.push(item);
+            new_size = _queue.size();
         });
+        return new_size;
     }
 
     bool try_pop(T* item)
