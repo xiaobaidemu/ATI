@@ -118,7 +118,7 @@ static void set_client_connection_callbacks(connection* client_conn)
         }
 
         client_receive_bytes += length;
-        SUCC("[Client] OnReceive: %lld (total: %lld)\n", (long long)length, client_receive_bytes);
+        SUCC("[Client] OnReceive: %lld (total: %lld)\n", (long long)length, (long long)client_receive_bytes);
         if (client_receive_bytes == ECHO_DATA_LENGTH * ECHO_DATA_ROUND) {
             INFO("[Client] All echo back data received. now client async_close()\n");
             conn->async_close();

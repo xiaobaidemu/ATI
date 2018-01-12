@@ -106,7 +106,7 @@ static void set_client_connection_callbacks(connection* client_conn)
     client_conn->OnReceive = [&](connection* conn, const void* buffer, const size_t length) {
         ASSERT(memcmp(buffer, dummy_data + client_receive_bytes, length) == 0);
         client_receive_bytes += length;
-        SUCC("[Client] OnReceive: %lld (total: %lld)\n", (long long)length, client_receive_bytes);
+        SUCC("[Client] OnReceive: %lld (total: %lld)\n", (long long)length, (long long)client_receive_bytes);
         if (client_receive_bytes == ECHO_DATA_LENGTH) {
             INFO("[Client] All echo back data received. now client async_close()\n");
             conn->async_close();
