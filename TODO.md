@@ -13,7 +13,7 @@
 - *TODO:* `socket_environment.dispose()` - how to implement?
 
 # Fix by current commit
-- *Improvement:* Can we prevent unnecessary connection_async_send notification?
 
 # Fixed
+- *Improvement:* Can we prevent unnecessary connection_async_send notification?
 - *Improvement:* Can we prevent unnecessary notification eventfd write?
