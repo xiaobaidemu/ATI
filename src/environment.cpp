@@ -149,7 +149,7 @@ void socket_environment::push_and_trigger_notification(const event_data& notific
         CCALL(write(_notification_event_fd, &value, sizeof(value)));
     }
     else {
-        DEBUG("skip write(_notification_event_fd): queued notification count = %lld\n", new_size);
+        DEBUG("skip write(_notification_event_fd): queued notification count = %lld\n", (long long)new_size);
     }
 }
 
