@@ -18,10 +18,8 @@ socket_environment::socket_environment()
     _notification_event_fddata = fd_data(this, _notification_event_fd);
 
     // add _notification_event_fd to epoll
-    epoll_event event;
-    event.events = EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET;
-    event.data.ptr = &_notification_event_fddata;
-    CCALL(epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _notification_event_fd, &event));
+    // NOTE: EPOLLOUT is not interesting, as eventfd is always writable (before 0xFF...FE)
+    epoll_add(&_notification_event_fddata, EPOLLIN | EPOLLHUP | EPOLLERR | EPOLLET);
 
     // Start a thread to run main_loop
     _loop_thread = new std::thread([this]() {
@@ -90,6 +88,7 @@ void socket_environment::process_epoll_env_notification_event_fd(const uint32_t 
 {
     // Consume eventfd
     uint64_t dummy;
+    ASSERT(events & EPOLLIN);
     CCALL(read(_notification_event_fd, &dummy, sizeof(dummy)));
 
     // Process all currently queued event_data
@@ -147,12 +146,56 @@ void socket_environment::process_notification(const event_data::event_type evtyp
     }
 }
 
+void socket_environment::epoll_add(fd_data* fddata, const uint32_t events) const
+{
+    ASSERT(fddata);
+    ASSERT_RESULT(fddata->fd);
+
+    epoll_event event;
+    event.events = events;
+    event.data.ptr = fddata;
+    CCALL(epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, fddata->fd, &event));
+}
+
+void socket_environment::epoll_modify(fd_data* fddata, const uint32_t events) const
+{
+    ASSERT(fddata);
+    ASSERT_RESULT(fddata->fd);
+
+    epoll_event event;
+    event.events = events;
+    event.data.ptr = fddata;
+    CCALL(epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fddata->fd, &event));
+}
+
 
 void socket_environment::dispose()
 {
+    // TODO: Use rundown_protection too?
+
     // Send a notification to current environment
-    push_and_trigger_notification(event_data::ctor_environment_dispose(this));
+    push_and_trigger_notification(event_data::environment_dispose(this));
 
     // Wait for main_loop to end
     _loop_thread->join();
+}
+
+socket_listener* socket_environment::create_listener(const char* bind_ip, const uint16_t port)
+{
+    return new socket_listener(this, bind_ip, port);
+}
+
+socket_listener* socket_environment::create_listener(const char* socket_file)
+{
+    return new socket_listener(this, socket_file);
+}
+
+socket_connection* socket_environment::create_connection(const char* connect_ip, const uint16_t port)
+{
+    return new socket_connection(this, connect_ip, port);
+}
+
+socket_connection* socket_environment::create_connection(const char* socket_file)
+{
+    return new socket_connection(this, socket_file);
 }

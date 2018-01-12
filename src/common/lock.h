@@ -52,7 +52,11 @@ public:
         release();
     }
 
+#ifdef UNITTEST
+    ~lock() throw()
+#else
     ~lock()
+#endif
     {
 #ifdef UNITTEST
         TEST_ASSERT(!is_locked());

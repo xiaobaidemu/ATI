@@ -51,6 +51,7 @@ struct event_data
         EVENTTYPE_ENVIRONMENT_DISPOSE,
         EVENTTYPE_CONNECTION_CLOSE,
         EVENTTYPE_CONNECTION_ASYNC_SEND,
+        EVENTTYPE_CONNECTION_CONNECT_FAILED,
         EVENTTYPE_LISTENER_CLOSE,
     };
 
@@ -58,10 +59,43 @@ struct event_data
     void* owner;
     event_owner_type owner_type;
 
-    static event_data ctor_environment_dispose(environment* env) { return event_data{ EVENTTYPE_ENVIRONMENT_DISPOSE, env, EVENTOWNER_ENVIRONMENT }; }
-    static event_data ctor_connection_close(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_CLOSE, conn, EVENTOWNER_CONNECTION }; }
-    static event_data ctor_connection_async_send(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_ASYNC_SEND, conn, EVENTOWNER_CONNECTION }; }
-    static event_data ctor_listener_close(listener* listen) { return event_data{ EVENTTYPE_LISTENER_CLOSE, listen, EVENTOWNER_LISTENER }; }
+    static event_data environment_dispose(environment* env) { return event_data{ EVENTTYPE_ENVIRONMENT_DISPOSE, env, EVENTOWNER_ENVIRONMENT }; }
+    static event_data connection_close(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_CLOSE, conn, EVENTOWNER_CONNECTION }; }
+    static event_data connection_connect_failed(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_CONNECT_FAILED, conn, EVENTOWNER_CONNECTION }; }
+    static event_data connection_async_send(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_ASYNC_SEND, conn, EVENTOWNER_CONNECTION }; }
+    static event_data listener_close(listener* listen) { return event_data{ EVENTTYPE_LISTENER_CLOSE, listen, EVENTOWNER_LISTENER }; }
+};
+
+
+
+class fragment
+{
+private:
+    /*const*/ char* _buffer;
+    /*const*/ size_t _length;
+    size_t _offset;
+
+public:
+    fragment(const void* buffer, const size_t length)
+        : _buffer((char*)const_cast<void*>(buffer)), _length(length), _offset(0)
+    {
+        if (length) {
+            ASSERT(buffer);
+        }
+    }
+    fragment() : _buffer(nullptr), _length(0), _offset(0) { }
+
+    const void* curr_buffer() const { return _buffer + _offset; }
+    size_t curr_length() const { return _length - _offset; }
+
+    const void* original_buffer() const { return _buffer; }
+    size_t original_length() const { return _length; }
+
+    void forward(size_t n)
+    {
+        ASSERT(n <= curr_length());
+        _offset += n;
+    }
 };
 
 

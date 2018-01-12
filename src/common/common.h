@@ -8,3 +8,4 @@
 #include "assertion.h"
 
 #include "tsqueue.h"
+#include "endpoint.h"

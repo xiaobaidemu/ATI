@@ -13,14 +13,23 @@ protected:
 
 class socket_environment : public environment
 {
+    friend class socket_listener;
+    friend class socket_connection;
+
 public:
     socket_environment();
     ~socket_environment() override;
     void dispose() override;
+    socket_listener* create_listener(const char* bind_ip, const uint16_t port);
+    socket_listener* create_listener(const char* socket_file);
+    socket_connection* create_connection(const char* connect_ip, const uint16_t port);
+    socket_connection* create_connection(const char* socket_file);
 
 private:
     void process_epoll_env_notification_event_fd(const uint32_t events);
     void process_notification(const event_data::event_type evtype);
+    void epoll_add(fd_data* fddata, const uint32_t events) const;
+    void epoll_modify(fd_data* fddata, const uint32_t events) const;
     void main_loop();
     void push_and_trigger_notification(const event_data& notification);
 

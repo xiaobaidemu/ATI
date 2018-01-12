@@ -65,14 +65,19 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetExt />
     <IncludePath>$(ProjectDir)..\src;$(IncludePath)</IncludePath>
+    <RemoteCCompileToolExe>g++-7</RemoteCCompileToolExe>
+    <RemoteCppCompileToolExe>g++-7</RemoteCppCompileToolExe>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetExt />
     <IncludePath>$(ProjectDir)..\src;$(IncludePath)</IncludePath>
+    <RemoteCCompileToolExe>g++-7</RemoteCCompileToolExe>
+    <RemoteCppCompileToolExe>g++-7</RemoteCppCompileToolExe>
   </PropertyGroup>
   <ItemGroup>
     <ClInclude Include="..\src\common\assertion.h" />
     <ClInclude Include="..\src\common\common.h" />
+    <ClInclude Include="..\src\common\endpoint.h" />
     <ClInclude Include="..\src\common\lock.h" />
     <ClInclude Include="..\src\common\log.h" />
     <ClInclude Include="..\src\common\rundown_protection.h" />

@@ -27,6 +27,26 @@ public:
         return success;
     }
 
+    void pop()
+    {
+        _lock.acquire_run_release([&]() {
+            ASSERT(!_queue.empty());
+            _queue.pop();
+        });
+    }
+
+    bool try_front(T** item)
+    {
+        bool success = false;
+        _lock.acquire_run_release([&]() {
+            if (!_queue.empty()) {
+                *item = &_queue.front();
+                success = true;
+            }
+        });
+        return success;
+    }
+
     size_t size()
     {
         return _lock.acquire_run_release([&] {
