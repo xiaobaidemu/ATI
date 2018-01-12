@@ -39,6 +39,7 @@ private:
     std::thread* _loop_thread = nullptr;
     int _epoll_fd = INVALID_FD;
 
+    std::atomic_int _notification_count;
     int _notification_event_fd = INVALID_FD;
     fd_data _notification_event_fddata;    
     tsqueue<event_data> _notification_queue;

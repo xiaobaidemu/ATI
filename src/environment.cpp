@@ -16,6 +16,7 @@ socket_environment::socket_environment()
     // We will use edge-trigger mode, don't specify EFD_SEMAPHORE
     _notification_event_fd = CCALL(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK));
     _notification_event_fddata = fd_data(this, _notification_event_fd);
+    _notification_count.store(0);
 
     // add _notification_event_fd to epoll
     // NOTE: EPOLLOUT is not interesting, as eventfd is always writable (before 0xFF...FE)
@@ -101,10 +102,11 @@ void socket_environment::main_loop()
 
 void socket_environment::process_epoll_env_notification_event_fd(const uint32_t events)
 {
-    // Consume eventfd
+    // Consume eventfd & _notification_count
     uint64_t dummy;
     ASSERT(events & EPOLLIN);
     CCALL(read(_notification_event_fd, &dummy, sizeof(dummy)));
+    _notification_count.store(0);
 
     // Process all currently queued event_data
     event_data evdata;
@@ -141,10 +143,16 @@ void socket_environment::push_and_trigger_notification(const event_data& notific
     ASSERT(notification.owner_type < event_data::EVENTOWNER_MAX);
     _notification_queue.push(notification);
 
-    // Write to event_fd to trigger epoll
+    // Write to event_fd (if necessary) to trigger epoll
     ASSERT_RESULT(_notification_event_fd);
-    uint64_t value = 1;
-    CCALL(write(_notification_event_fd, &value, sizeof(value)));
+    const long long old_notification_count = _notification_count++;
+    if (old_notification_count == 0) {
+        uint64_t value = 1;
+        CCALL(write(_notification_event_fd, &value, sizeof(value)));
+    }
+    else {
+        DEBUG("skip write(_notification_event_fd): old_notification_count = %lld\n", old_notification_count);
+    }
 }
 
 
