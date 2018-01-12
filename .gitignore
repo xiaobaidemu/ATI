@@ -3,3 +3,11 @@
 /.idea/
 /cmake-build-*/
 
+# CMake results
+/CMakeCache.txt
+/CMakeFiles/
+/Makefile
+/Sendrecv
+/Send_recv
+/cmake_install.cmake
+
