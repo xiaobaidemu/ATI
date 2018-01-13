@@ -7,8 +7,8 @@
 
 #define LOCAL_HOST          ("127.0.0.1")
 #define LOCAL_PORT          (8801)
-#define ECHO_DATA_LENGTH    ((size_t)1024 * 1024 * 32)  // 32MB
-#define ECHO_DATA_ROUND     ((size_t)32)
+#define ECHO_DATA_LENGTH    ((size_t)1024 * 1024 * 16)  // 16MB
+#define ECHO_DATA_ROUND     ((size_t)16)
 #define THREAD_COUNT        (32)
 
 static char dummy_data[ECHO_DATA_LENGTH];
@@ -19,20 +19,24 @@ static std::atomic_int_fast64_t server_send_bytes;
 static std::atomic_int_fast64_t server_receive_bytes;
 static std::mutex client_close[THREAD_COUNT];
 static std::mutex listener_close;
+static std::atomic_int server_alive_connections(THREAD_COUNT);
 
 static void set_server_connection_callbacks(connection* server_conn)
 {
     const unsigned long long TRADEMARK = 0xdeedbeef19960513;
     server_conn->OnClose = [&](connection*) {
+        --server_alive_connections;
         SUCC("[ServerConnection] OnClose\n");
     };
-    server_conn->OnHup = [&](connection*, const int error) {
+    server_conn->OnHup = [&](connection* conn, const int error) {
         if (error == 0) {
             SUCC("[ServerConnection] OnHup: %d (%s)\n", error, strerror(error));
         }
         else {
             ERROR("[ServerConnection] OnHup: %d (%s)\n", error, strerror(error));
+            TEST_FAIL();
         }
+        conn->async_close();
     };
     server_conn->OnConnect = [&](connection*) {
         FATAL("[ServerConnection] OnConnect: BUG - unexpected\n");
@@ -64,7 +68,6 @@ static void set_server_connection_callbacks(connection* server_conn)
         SUCC("[ServerConnection] OnSend: %lld (total: %lld)\n", (long long)length, (long long)sent);
         if (sent == ECHO_DATA_LENGTH * ECHO_DATA_ROUND * THREAD_COUNT) {
             INFO("[ServerConnection] All echo back data sent. (%lld)\n", sent);
-            conn->async_close();
         }
 
         void* org_buf = (char*)buffer - sizeof(TRADEMARK);
@@ -195,6 +198,8 @@ void test_echo_multi_thread()
     listener_close.lock();
 
     env.dispose();
+
+    ASSERT(server_alive_connections == 0);
 }
 
 

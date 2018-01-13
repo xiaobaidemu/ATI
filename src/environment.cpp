@@ -105,7 +105,6 @@ void socket_environment::process_epoll_env_notification_event_fd(const uint32_t 
     uint64_t dummy;
     ASSERT(events & EPOLLIN);
     CCALL(read(_notification_event_fd, &dummy, sizeof(dummy)));
-    ASSERT(dummy == 1);
     
     // Process all currently queued event_data
     event_data evdata;
