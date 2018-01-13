@@ -25,6 +25,7 @@ public:
     std::function<void (connection* conn)> OnClose = nullptr;
 
     virtual bool async_send(const void* buffer, const size_t length) = 0;
+    virtual bool async_send_many(const std::vector<fragment> frags) = 0;
     virtual bool async_close() = 0;
     virtual bool async_connect() = 0;
     virtual bool start_receive() = 0;
@@ -57,6 +58,7 @@ private:
 public:
     bool async_close() override;
     bool async_send(const void* buffer, const size_t length) override;
+    bool async_send_many(const std::vector<fragment> frags) override;
     bool async_connect() override;
     bool start_receive() override;
 

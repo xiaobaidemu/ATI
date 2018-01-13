@@ -361,6 +361,41 @@ bool socket_connection::async_send(const void* buffer, const size_t length)
     return true;
 }
 
+bool socket_connection::async_send_many(const std::vector<fragment> frags)
+{
+    ASSERT(!frags.empty());
+#ifndef NDEBUG
+    for (const fragment& frag : frags) {
+        ASSERT(frag.original_buffer() != nullptr);
+        ASSERT(frag.original_length() != 0);
+    }
+#endif
+
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
+        return false;
+    }
+
+    // Increase _rundown count as if we call async_send() so many times
+    for (size_t i = 0; i < frags.size() - 1; ++i) {
+        bool success = _rundown.try_acquire(&need_release);
+        ASSERT(success);
+        ASSERT(need_release);
+    }
+
+    const size_t new_size = _sending_queue.push_many(frags);
+
+    // Trigger notification only if these are the only fragments to send
+    if (new_size == frags.size()) {
+        ((socket_environment*)_environment)->push_and_trigger_notification(event_data::connection_async_send(this));
+    }
+
+    return true;
+}
+
 bool socket_connection::async_connect()
 {
     bool need_release;

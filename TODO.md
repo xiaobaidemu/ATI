@@ -5,10 +5,11 @@
 - *Test:* Test closing a connection while sending
 - *TODO:* `socket_environment.dispose()` - how to implement?
 - *TODO:* Where to `delete` created socket_listeners as well as created/accepted socket_connections?
-- *Enhancement*: Allow sending multiple fragments in one `async_send` call (with their order preserved)
 - *Enhancement*: Allow `OnReceive` returns a value indicating how many bytes are NOT used (and will be prepended to next OnReceive)
+- *Test*: Test `async_send_many`
 
 # Fix by current commit
+- *Enhancement*: Allow sending multiple fragments in one `async_send` call (with their order preserved)
 
 # Fixed
 

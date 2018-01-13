@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lock.h"
+#include <vector>
 #include <queue>
 
 template<typename T>
@@ -12,6 +13,18 @@ public:
         size_t new_size;
         _lock.acquire_run_release([&] {
             _queue.push(item);
+            new_size = _queue.size();
+        });
+        return new_size;
+    }
+
+    size_t push_many(std::vector<T> items)
+    {
+        size_t new_size;
+        _lock.acquire_run_release([&] {
+            for (const T& item: items) {
+                _queue.push(item);
+            }
             new_size = _queue.size();
         });
         return new_size;
