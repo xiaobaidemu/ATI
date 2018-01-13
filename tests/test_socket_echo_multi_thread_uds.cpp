@@ -18,13 +18,16 @@ static std::atomic_int_fast64_t server_send_bytes;
 static std::atomic_int_fast64_t server_receive_bytes;
 static std::mutex client_close[THREAD_COUNT];
 static std::mutex listener_close;
+static std::mutex server_all_close;
 static std::atomic_int server_alive_connections(THREAD_COUNT);
 
 static void set_server_connection_callbacks(connection* server_conn)
 {
     const unsigned long long TRADEMARK = 0xdeedbeef19960513;
     server_conn->OnClose = [&](connection*) {
-        --server_alive_connections;
+        if (--server_alive_connections == 0) {
+            server_all_close.unlock();
+        }
         SUCC("[ServerConnection] OnClose\n");
     };
     server_conn->OnHup = [&](connection* conn, const int error) {
@@ -157,6 +160,7 @@ void test_echo_multi_thread_uds()
         client_close[tid].lock();
     }
     listener_close.lock();
+    server_all_close.lock();
 
     socket_environment env;
     socket_listener* lis = env.create_listener(SOCKET_FILE);
@@ -200,6 +204,7 @@ void test_echo_multi_thread_uds()
 
     env.dispose();
 
+    server_all_close.lock();
     ASSERT(server_alive_connections == 0);
 
     unlink(SOCKET_FILE);
