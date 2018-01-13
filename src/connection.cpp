@@ -142,14 +142,14 @@ void socket_connection::process_epoll_conn_fd(const uint32_t events)
 
             if ((events & EPOLLERR) || (events & EPOLLHUP) || (events & EPOLLRDHUP)) {
 
-                if (!(events & EPOLLERR) && !(events & EPOLLHUP) && (events & EPOLLRDHUP)) {
+                if (!(events & EPOLLERR) && ((events & EPOLLHUP) || (events & EPOLLRDHUP))) {
                     // Only EPOLLRDHUP is reported. Invoke OnHup
                     if (OnHup) {
                         OnHup(this, 0);
                     }
                 }
                 else {
-                    // TODO: How to deal with this?
+                    // TODO: How to deal with EPOLLERR?
                     FATAL("socket_connection(fd=%d): events = %d. TODO!!! (OnHup?)\n", _conn_fd, events);
                     ASSERT(0);
                 }

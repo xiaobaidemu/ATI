@@ -89,6 +89,9 @@
     <ClCompile Include="..\tests\test_socket_echo_multi_thread.cpp">
       <Filter>tests</Filter>
     </ClCompile>
+    <ClCompile Include="..\tests\test_socket_echo_multi_thread_uds.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\TODO.md" />

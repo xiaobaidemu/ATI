@@ -8,5 +8,6 @@ int main(int argc, char** argv)
     RUN_TEST(test_socket_echo_simple);
     RUN_TEST(test_socket_echo_many_round);
     RUN_TEST(test_socket_echo_multi_thread);
+    RUN_TEST(test_socket_echo_multi_thread_uds);
     return 0;
 }

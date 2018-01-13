@@ -101,6 +101,7 @@
     <ClCompile Include="..\tests\test_rundown_protection.cpp" />
     <ClCompile Include="..\tests\test_socket_echo_many_round.cpp" />
     <ClCompile Include="..\tests\test_socket_echo_multi_thread.cpp" />
+    <ClCompile Include="..\tests\test_socket_echo_multi_thread_uds.cpp" />
     <ClCompile Include="..\tests\test_socket_echo_simple.cpp" />
   </ItemGroup>
   <ItemGroup>

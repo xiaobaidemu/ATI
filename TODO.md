@@ -2,11 +2,11 @@
 # TODOs
 
 - *Improvement:* Use pooling for receive buffer
-- *Test:* Test using UDS
 - *Test:* Test closing a connection while sending
 - *TODO:* `socket_environment.dispose()` - how to implement?
 
 # Fix by current commit
+- *Test:* Test using UDS
 
 # Fixed
 

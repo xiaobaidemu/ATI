@@ -25,7 +25,7 @@ socket_listener::socket_listener(socket_environment* env, const char* socket_fil
 
 void socket_listener::init()
 {
-    _listen_fd = CCALL(socket(_bind_endpoint.family(), SOCK_STREAM, IPPROTO_TCP));
+    _listen_fd = CCALL(socket(_bind_endpoint.family(), SOCK_STREAM, 0));
     MAKE_NONBLOCK(_listen_fd);
     _listen_fddata = fd_data(this, _listen_fd);
 
