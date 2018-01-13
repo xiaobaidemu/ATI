@@ -51,6 +51,7 @@ private:
     void process_notification(const event_data::event_type evtype);
     void do_send();
     void do_receive();
+    void update_local_endpoint();
     void trigger_rundown_release();
 
 public:
@@ -58,6 +59,9 @@ public:
     bool async_send(const void* buffer, const size_t length) override;
     bool async_connect() override;
     bool start_receive() override;
+
+    endpoint remote_endpoint() const { return _remote_endpoint; }
+    endpoint local_endpoint() const { return _local_endpoint; }
 
 private:
     volatile bool _close_finished = false;

@@ -4,12 +4,13 @@
 - *Improvement:* Use pooling for receive buffer
 - *Test:* Test closing a connection while sending
 - *TODO:* `socket_environment.dispose()` - how to implement?
+- *TODO:* Where to `delete` created socket_listeners as well as created/accepted socket_connections?
 
 # Fix by current commit
-- *Test:* Test using UDS
 
 # Fixed
 
+- *Test:* Test using UDS
 - *Bug:* Potentially invoke rundown protection callback synchronously. 
     <br>1. Maybe by calling `_rundown.try_acquire()`. 
     <br>2. Maybe by synchronously `_rundown.release()`

@@ -31,6 +31,8 @@ public:
     bool start_accept() override;
     bool async_close() override;
 
+    endpoint bind_endpoint() const { return _bind_endpoint; }
+
 private:
     socket_listener(socket_environment* env, const char* bind_ip, const uint16_t port);
     socket_listener(socket_environment* env, const char* socket_file);

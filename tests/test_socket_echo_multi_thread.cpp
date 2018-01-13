@@ -99,7 +99,9 @@ static void set_client_connection_callbacks(connection* client_conn, const int t
         }
     };
     client_conn->OnConnect = [tid](connection* conn) {
-        SUCC("[Client:%d] OnConnect\n", tid);
+        SUCC("[Client:%d] OnConnect: %s -> %s\n", tid,
+            ((socket_connection*)conn)->local_endpoint().to_string().c_str(),
+            ((socket_connection*)conn)->remote_endpoint().to_string().c_str());
         conn->start_receive();
 
         bool success = conn->async_send(dummy_data, ECHO_DATA_LENGTH);
@@ -160,7 +162,9 @@ void test_echo_multi_thread()
     socket_environment env;
     socket_listener* lis = env.create_listener(LOCAL_HOST, LOCAL_PORT);
     lis->OnAccept = [&](listener*, connection* conn) {
-        SUCC("[ServerListener] OnAccept\n");
+        SUCC("[ServerListener] OnAccept: %s -> %s\n", 
+            ((socket_connection*)conn)->local_endpoint().to_string().c_str(),
+            ((socket_connection*)conn)->remote_endpoint().to_string().c_str());
         set_server_connection_callbacks(conn);
         conn->start_receive();
     };
@@ -169,7 +173,7 @@ void test_echo_multi_thread()
         TEST_FAIL();
     };
     lis->OnClose = [&](listener*) {
-        SUCC("[ServerListener] OnClose\n");
+        SUCC("[ServerListener] OnClose: %s\n", lis->bind_endpoint().to_string().c_str());
         listener_close.unlock();
     };
     bool success = lis->start_accept();

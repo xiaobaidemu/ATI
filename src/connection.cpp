@@ -46,14 +46,15 @@ void socket_connection::init(const bool isAccepted)
 
     if (isAccepted) {
         _status.store(CONNECTION_CONNECTED);
+
+        // Update local endpoint if this is an accepted connection
+        update_local_endpoint();
+
+        // Add to epoll if this is an accepted connection
+        ((socket_environment*)_environment)->epoll_add(&_conn_fddata, EPOLLOUT | EPOLLERR | EPOLLRDHUP | EPOLLET);
     }
     else {
         _status.store(CONNECTION_NOT_CONNECTED);
-    }
-
-    // Add to epoll if this is an accepted connection
-    if (isAccepted) {
-        ((socket_environment*)_environment)->epoll_add(&_conn_fddata, EPOLLOUT | EPOLLERR | EPOLLRDHUP | EPOLLET);
     }
 
     // Register rundown protection callback
@@ -101,6 +102,9 @@ void socket_connection::process_epoll_conn_fd(const uint32_t events)
     const connection_status status = _status;
     switch (status) {
         case CONNECTION_CONNECTING: {
+
+            // Update local endpoint first
+            update_local_endpoint();
 
             // Check whether connect() failed
             if ((events & EPOLLERR) || (events & EPOLLHUP) || (events & EPOLLRDHUP)) {
@@ -189,6 +193,8 @@ void socket_connection::process_notification(const event_data::event_type evtype
             // Change _status to CONNECTION_CONNECT_FAILED
             connection_status original = _status.exchange(CONNECTION_CONNECT_FAILED);
             ASSERT(original == CONNECTION_CONNECTING);
+
+            update_local_endpoint();
 
             if (OnConnectError) {
                 OnConnectError(this, _immediate_connect_error);
@@ -298,6 +304,12 @@ void socket_connection::do_receive()
     }
 
     free(buffer);
+}
+
+void socket_connection::update_local_endpoint()
+{
+    socklen_t len = _remote_endpoint.socklen();
+    CCALL(getsockname(_conn_fd, _local_endpoint.data(), &len));
 }
 
 void socket_connection::trigger_rundown_release()
