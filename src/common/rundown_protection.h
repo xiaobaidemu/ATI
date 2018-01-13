@@ -56,7 +56,7 @@ public:
         return success;
     }
 
-    bool try_acquire()
+    bool try_acquire(bool* need_release)
     {
         // At most times, we expect try_acquire() will succeed.
         // Yet, we may use a unstrict shutdown check (do not involve `lock xchg`)
@@ -75,11 +75,15 @@ public:
             // However, if we have ever called the callback, we do not care about _active_count's value any more!
             // This most likely saves an atomic exhange after calling shutdown()
             if (!(result & CALLBACK_MASK)) {
-                release();
+                *need_release = true;
+            }
+            else {
+                *need_release = false;
             }
             return false;
         }
 
+        *need_release = true;
         return true;
     }
 

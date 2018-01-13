@@ -53,7 +53,9 @@ struct event_data
         EVENTTYPE_CONNECTION_CLOSE,
         EVENTTYPE_CONNECTION_ASYNC_SEND,
         EVENTTYPE_CONNECTION_CONNECT_FAILED,
+        EVENTTYPE_CONNECTION_RUNDOWN_RELEASE,
         EVENTTYPE_LISTENER_CLOSE,
+        EVENTTYPE_LISTENER_RUNDOWN_RELEASE,
         EVENTTYPE_MAX,
     };
 
@@ -65,7 +67,9 @@ struct event_data
     static event_data connection_close(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_CLOSE, conn, EVENTOWNER_CONNECTION }; }
     static event_data connection_connect_failed(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_CONNECT_FAILED, conn, EVENTOWNER_CONNECTION }; }
     static event_data connection_async_send(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_ASYNC_SEND, conn, EVENTOWNER_CONNECTION }; }
+    static event_data connection_rundown_release(connection* conn) { return event_data{ EVENTTYPE_CONNECTION_RUNDOWN_RELEASE, conn, EVENTOWNER_CONNECTION }; }
     static event_data listener_close(listener* listen) { return event_data{ EVENTTYPE_LISTENER_CLOSE, listen, EVENTOWNER_LISTENER }; }
+    static event_data listener_rundown_release(listener* listen) { return event_data{ EVENTTYPE_LISTENER_RUNDOWN_RELEASE, listen, EVENTOWNER_LISTENER }; }
 };
 
 

@@ -51,6 +51,7 @@ private:
     void process_notification(const event_data::event_type evtype);
     void do_send();
     void do_receive();
+    void trigger_rundown_release();
 
 public:
     bool async_close() override;

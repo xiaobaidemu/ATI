@@ -57,7 +57,11 @@ void socket_listener::init()
 
 void socket_listener::process_epoll_listen_fd(const uint32_t events)
 {
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
         return;
     }
 
@@ -85,6 +89,11 @@ void socket_listener::process_notification(const event_data::event_type evtype)
 {
     switch (evtype) {
         case event_data::EVENTTYPE_LISTENER_CLOSE: {
+            _rundown.release();
+            break;
+        }
+        case event_data::EVENTTYPE_LISTENER_RUNDOWN_RELEASE: {
+            _rundown.release();
             break;
         }
         default: {
@@ -92,8 +101,11 @@ void socket_listener::process_notification(const event_data::event_type evtype)
             ASSERT(0);
         }
     }
+}
 
-    _rundown.release();
+void socket_listener::trigger_rundown_release()
+{
+    ((socket_environment*)_environment)->push_and_trigger_notification(event_data::listener_rundown_release(this));
 }
 
 bool socket_listener::start_accept()
@@ -108,7 +120,11 @@ bool socket_listener::start_accept()
     }
 
     // Acquire a rundown protection
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
         return false;
     }
 
@@ -119,18 +135,22 @@ bool socket_listener::start_accept()
     // NOTE: listener fd is NOT edge-triggered!
     ((socket_environment*)_environment)->epoll_add(&_listen_fddata, EPOLLIN | EPOLLHUP | EPOLLERR);    
 
-    _rundown.release();
+    trigger_rundown_release();
     return true;
 }
 
 bool socket_listener::async_close()
 {
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
         return false;
     }
 
     if (!_rundown.shutdown()) {
-        _rundown.release();
+        trigger_rundown_release();
         return false;
     }
 

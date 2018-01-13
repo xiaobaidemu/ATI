@@ -27,22 +27,27 @@ void test_basic_1()
     });
     TEST_ASSERT(value == 0);
 
-    success = rundown.try_acquire();
+    bool need_release;
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(need_release);
     TEST_ASSERT(success);
     TEST_ASSERT(value == 0);
 
     rundown.shutdown();
     TEST_ASSERT(value == 0);
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
     TEST_ASSERT(!success);
+    TEST_ASSERT(need_release);
+    rundown.release();
     TEST_ASSERT(value == 0);
 
     // now callback is invoked in register_callback()
     rundown.release();
     TEST_ASSERT(value == 1);
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(!need_release);
     TEST_ASSERT(!success);
     TEST_ASSERT(value == 1);
 }
@@ -54,18 +59,24 @@ void test_basic_2()
     volatile int value = 0;
     rundown_protection rundown;
 
-    success = rundown.try_acquire();
+    bool need_release;
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(need_release);
     TEST_ASSERT(success);
     TEST_ASSERT(value == 0);
 
     rundown.shutdown();
     TEST_ASSERT(value == 0);
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
     TEST_ASSERT(!success);
+    TEST_ASSERT(need_release);
+    rundown.release();
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
     TEST_ASSERT(!success);
+    TEST_ASSERT(need_release);
+    rundown.release();
 
     // now callback is invoked in register_callback()
     rundown.register_callback([&value]() mutable {
@@ -85,7 +96,9 @@ void test_basic_3()
     volatile int value = 0;
     rundown_protection rundown;
 
-    success = rundown.try_acquire();
+    bool need_release;
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(need_release);
     TEST_ASSERT(success);
     TEST_ASSERT(value == 0);
 
@@ -103,7 +116,8 @@ void test_basic_3()
     rundown.shutdown();
     TEST_ASSERT(value == 1);
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(!need_release);
     TEST_ASSERT(!success);
 }
 
@@ -114,11 +128,14 @@ void test_basic_4()
     volatile int value = 0;
     rundown_protection rundown;
 
-    success = rundown.try_acquire();
+    bool need_release;
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(need_release);
     TEST_ASSERT(success);
     TEST_ASSERT(value == 0);
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(need_release);
     TEST_ASSERT(success);
     TEST_ASSERT(value == 0);
 
@@ -135,13 +152,16 @@ void test_basic_4()
     rundown.shutdown();
     TEST_ASSERT(value == 0);
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
     TEST_ASSERT(!success);
+    TEST_ASSERT(need_release);
+    rundown.release();
 
     rundown.release();
     TEST_ASSERT(value == 1);
 
-    success = rundown.try_acquire();
+    success = rundown.try_acquire(&need_release);
+    TEST_ASSERT(!need_release);
     TEST_ASSERT(!success);
 }
 
@@ -158,7 +178,9 @@ void test_multithread_1()
     for (thread*& thr : threads) {
         thr = new thread([&]() {
             for (int i = 0; i < ATTEMPT_PER_THREAD; ++i) {
-                bool success = rundown.try_acquire();
+                bool need_release;
+                bool success = rundown.try_acquire(&need_release);
+                TEST_ASSERT(need_release);
                 TEST_ASSERT(success);
             }
         });
@@ -178,8 +200,11 @@ void test_multithread_1()
 
     rundown.shutdown();
 
-    success = rundown.try_acquire();
+    bool need_release;
+    success = rundown.try_acquire(&need_release);
     TEST_ASSERT(!success);
+    TEST_ASSERT(need_release);
+    rundown.release();
 
     for (int i = 0; i < THREAD_COUNT * ATTEMPT_PER_THREAD; ++i) {
         TEST_ASSERT(value == 0);
@@ -205,13 +230,23 @@ void test_multithread_2()
 
             bool success = true;
             while (success) {
-                success = rundown.try_acquire();
+                bool need_release;
+                success = rundown.try_acquire(&need_release);
                 if (success) ++succCnt;
+                else {
+                    if (need_release) {
+                        rundown.release();
+                    }
+                }
             }
 
             while (!stop_event) {
-                success = rundown.try_acquire();
+                bool need_release;
+                success = rundown.try_acquire(&need_release);
                 TEST_ASSERT(!success);
+                if (need_release) {
+                    rundown.release();
+                }
                 sched_yield();
             }
         });
@@ -271,9 +306,13 @@ void test_multithread_3()
 
             bool success = true;
             while (!rand_stop() && success) {
-                success = rundown.try_acquire();
+                bool need_release;
+                success = rundown.try_acquire(&need_release);
                 if (success) {
                     ++totSuccCnt;
+                }
+                else {
+                    if (need_release) rundown.release();
                 }
                 sched_yield();
             }
@@ -326,7 +365,8 @@ void test_acquire_speed()
     rundown_protection rundown;
     timer tmr;
     for (int i = 0; i < ACQUIRE_COUNT; ++i) {
-        rundown.try_acquire();
+        bool need_release;
+        rundown.try_acquire(&need_release);
     }
 
     const double elapsed = tmr.elapsed();
@@ -349,7 +389,8 @@ void test_acquire_speed_mt()
             while (!start_flag) sched_yield();
 
             for (int i = 0; i < ACQUIRE_COUNT / THREAD_COUNT; ++i) {
-                rundown.try_acquire();
+                bool need_release;
+                rundown.try_acquire(&need_release);
             }
         });
     }

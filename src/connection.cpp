@@ -90,8 +90,10 @@ void socket_connection::init(const bool isAccepted)
 
 void socket_connection::process_epoll_conn_fd(const uint32_t events)
 {
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
         WARN("socket_connection(fd=%d) _rundown.try_acquire() failed\n", _conn_fd);
+        _rundown.release();
         return;
     }
 
@@ -164,6 +166,7 @@ void socket_connection::process_epoll_conn_fd(const uint32_t events)
         }
     }
 
+    ASSERT(need_release);
     _rundown.release();
 }
 
@@ -174,6 +177,10 @@ void socket_connection::process_notification(const event_data::event_type evtype
             // We do not need to do anything
 
             // This was acquired in async_close()
+            _rundown.release();
+            break;
+        }
+        case event_data::EVENTTYPE_CONNECTION_RUNDOWN_RELEASE: {
             _rundown.release();
             break;
         }
@@ -293,14 +300,23 @@ void socket_connection::do_receive()
     free(buffer);
 }
 
+void socket_connection::trigger_rundown_release()
+{
+    ((socket_environment*)_environment)->push_and_trigger_notification(event_data::connection_rundown_release(this));
+}
+
 bool socket_connection::async_close()
 {
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
         return false;
     }
 
     if (!_rundown.shutdown()) {
-        _rundown.release();
+        trigger_rundown_release();
         return false;
     }
 
@@ -315,7 +331,11 @@ bool socket_connection::async_send(const void* buffer, const size_t length)
     ASSERT(buffer != nullptr);
     ASSERT(length > 0);
 
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
         return false;
     }
 
@@ -331,13 +351,17 @@ bool socket_connection::async_send(const void* buffer, const size_t length)
 
 bool socket_connection::async_connect()
 {
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
         return false;
     }
 
     connection_status expect = CONNECTION_NOT_CONNECTED;
     if (!_status.compare_exchange_strong(expect, CONNECTION_CONNECTING)) {
-        _rundown.release();
+        trigger_rundown_release();
         return false;
     }
 
@@ -372,12 +396,16 @@ bool socket_connection::async_connect()
 
 bool socket_connection::start_receive()
 {
-    if (!_rundown.try_acquire()) {
+    bool need_release;
+    if (!_rundown.try_acquire(&need_release)) {
+        if (need_release) {
+            trigger_rundown_release();
+        }
         return false;
     }
 
     if (_status != CONNECTION_CONNECTED) {
-        _rundown.release();
+        trigger_rundown_release();
         return false;
     }
 
@@ -386,6 +414,6 @@ bool socket_connection::start_receive()
     ASSERT(_conn_fddata.fd == _conn_fd);
     ((socket_environment*)_environment)->epoll_modify(&_conn_fddata, EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLRDHUP | EPOLLET);
 
-    _rundown.release();
+    trigger_rundown_release();
     return true;
 }

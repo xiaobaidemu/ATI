@@ -37,6 +37,7 @@ private:
     void init();
     void process_epoll_listen_fd(const uint32_t events);
     void process_notification(const event_data::event_type evtype);
+    void trigger_rundown_release();
 
 private:
     int _listen_fd = INVALID_FD;
