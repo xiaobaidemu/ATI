@@ -15,17 +15,35 @@ void rdma_conn_p2p::nofity_system(int event_fd)
 
 void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info){
     //test whether there were ibv_device
+    int num_devices;
+    struct ibv_device **dev_list = ibv_get_device_list(&num_devices);
+    if (!dev_list) {
+        ERROR("Failed to get IB devices list\n");
+        ASSERT(0);
+    }
+
     rdma_conn_info.rx_depth = RX_DEPTH;
+    struct ibv_device *ibv_dev;
+    for (int i = 0; i < num_devices; i++) {
+        ibv_dev = dev_list[i];
+        rdma_conn_info.context = ibv_open_device(ibv_dev);
+        if(rdma_conn_info.context)
+            break;
+    }
+    if(!(rdma_conn_info.context)) {
+        ERROR("Cannot open any ibv_device.\n");
+        ASSERT(0);
+    }
     rdma_conn_info.ib_port = 1;//default is 1
 
-    CCALL(ibv_query_port(belong_to->get_ibv_ctx(), rdma_conn_info.ib_port, &(rdma_conn_info.portinfo)));
-    rdma_conn_info.channel = ibv_create_comp_channel(belong_to->get_ibv_ctx());
+    CCALL(ibv_query_port(rdma_conn_info.context, rdma_conn_info.ib_port, &(rdma_conn_info.portinfo)));
+    rdma_conn_info.channel = ibv_create_comp_channel(rdma_conn_info.context);
     ASSERT(rdma_conn_info.channel);
 
-    rdma_conn_info.pd = ibv_alloc_pd(belong_to->get_ibv_ctx());
+    rdma_conn_info.pd = ibv_alloc_pd(rdma_conn_info.context);
     ASSERT(rdma_conn_info.pd);
 
-    rdma_conn_info.cq = ibv_create_cq(belong_to->get_ibv_ctx(), rdma_conn_info.rx_depth+1, this,
+    rdma_conn_info.cq = ibv_create_cq(rdma_conn_info.context, rdma_conn_info.rx_depth+1, this,
                                       rdma_conn_info.channel, 0);
     ASSERT(rdma_conn_info.cq);
 

@@ -14,22 +14,6 @@ conn_system::conn_system(const char *ip, int port) {
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
 
-    int num_devices;
-    struct ibv_device **dev_list = ibv_get_device_list(&num_devices);
-    if (!dev_list) {
-        ERROR("Failed to get IB devices list\n");
-        ASSERT(0);
-    }
-    for (int i = 0; i < num_devices; i++) {
-        ibv_dev = dev_list[i];
-        ctx = ibv_open_device(ibv_dev);
-        if(ctx)
-            break;
-    }
-    if(!(ctx)) {
-        ERROR("Cannot open any ibv_device.\n");
-        ASSERT(0);
-    }
     lis = env.create_listener(my_listen_ip, my_listen_port);
     lis->OnAccept = [&](listener*,  connection* conn){
         set_passive_connection_callback(conn);
@@ -60,7 +44,6 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         _lock.acquire();
         if(!connecting_map.InContains(key)){
             conn_object = new rdma_conn_p2p();
-            conn_object->belong_to = this;
             connecting_map.Set(key, conn_object);
         }
         else{
@@ -171,7 +154,6 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         if(cur_recvd + length < sizeof(ctl_data)){
             memcpy(&conn->cur_recv_info.qp_all_info+cur_recvd, buffer, length);
             conn->cur_recv_info.recvd_size += length;
-            ERROR("send_conn recv part.\n");
         }
         else{
             ASSERT(cur_recvd + length == sizeof(ctl_data));
@@ -246,7 +228,6 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                     _lock.acquire();
                     if(!connecting_map.InContains(peer_key)){
                         conn_object = new rdma_conn_p2p();
-                        conn_object->belong_to = this;
                         connecting_map.Set(peer_key, conn_object);
                     }
                     else{
@@ -257,13 +238,13 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 ASSERT(conn_object);
                 conn_object->recv_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
                 conn_object->recv_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
-                conn_object->nofity_system(conn_object->recv_event_fd);
-                WARN("nofity_system recv_event_fd:%d\n", conn_object->recv_event_fd);
 
                 //ready to send my qp information
                 rdma_conn_p2p * key_object;
                 ASSERT(connecting_map.Get(peer_key, &key_object));
                 key_object->create_qp_info(key_object->recv_rdma_conn);
+                conn_object->nofity_system(conn_object->recv_event_fd);
+                WARN("nofity_system recv_event_fd:%d\n", conn_object->recv_event_fd);
 
                 ctl_data *my_qp_info = new ctl_data();
                 strcpy(my_qp_info->ip, my_listen_ip);
@@ -272,7 +253,6 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 my_qp_info->qp_info.lid = htons(key_object->recv_rdma_conn.portinfo.lid);
                 my_qp_info->qp_info.qpn = htonl(key_object->recv_rdma_conn.qp->qp_num);
                 conn->async_send(my_qp_info, sizeof(ctl_data));
-                ITRACE("RECV_PEER send his qp_info.\n");
             }
         }
 
