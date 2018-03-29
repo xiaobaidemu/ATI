@@ -45,7 +45,6 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         if(!connecting_map.InContains(key)){
             conn_object = new rdma_conn_p2p();
             connecting_map.Set(key, conn_object);
-            ERROR("init create a new rdma_conn_p2p object key(%s).\n", key.c_str());
         }
         else{
             ASSERT(connecting_map.Get(key, &conn_object));
@@ -53,7 +52,6 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         _lock.release();
     }
     ASSERT(conn_object);
-    WARN("%lld\n", (long long int)conn_object);
 
     socket_connection *send_conn = env.create_connection(peer_ip, peer_port);
     set_active_connection_callback(send_conn, key);
@@ -65,18 +63,19 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     close(conn_object->send_event_fd);
     //fill the conn_object for send_direction
     exchange_qp_data send_direction_data = conn_object->send_direction_qp;
-    SUCC("SEND_direction my_qp_info:   LID 0x%04x, QPN 0x%06x\n",
+    SUCC("[%s] SEND_direction my_qp_info:   LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          conn_object->send_rdma_conn.portinfo.lid, conn_object->send_rdma_conn.qp->qp_num);
-    SUCC("SEND_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n",
+    SUCC("[%s] SEND_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          send_direction_data.lid, send_direction_data.qpn);
+
 
     CCALL(read(conn_object->recv_event_fd, &dummy, sizeof(dummy)));
     close(conn_object->recv_event_fd);
     exchange_qp_data recv_direction_data = conn_object->recv_direction_qp;
 
-    SUCC("RECV_direction my_qp_info:   LID 0x%04x, QPN 0x%06x\n",
+    SUCC("[%s] RECV_direction my_qp_info:   LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          conn_object->recv_rdma_conn.portinfo.lid, conn_object->recv_rdma_conn.qp->qp_num);
-    SUCC("RECV_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n",
+    SUCC("[%s] RECV_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          recv_direction_data.lid, recv_direction_data.qpn);
 
     SUCC("!!!!!FINISH INIT TO %s.!!!!!\n", key.c_str());
@@ -155,6 +154,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         if(cur_recvd + length < sizeof(ctl_data)){
             memcpy(&conn->cur_recv_info.qp_all_info+cur_recvd, buffer, length);
             conn->cur_recv_info.recvd_size += length;
+            ERROR("send_conn recv part.\n");
         }
         else{
             ASSERT(cur_recvd + length == sizeof(ctl_data));
@@ -230,7 +230,6 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                     if(!connecting_map.InContains(peer_key)){
                         conn_object = new rdma_conn_p2p();
                         connecting_map.Set(peer_key, conn_object);
-                        ERROR("passive recv_conn create a new rdma_conn_p2p object key(%s).\n",peer_key.c_str());
                     }
                     else{
                         ASSERT(connecting_map.Get(peer_key, &conn_object));
@@ -238,7 +237,6 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                     _lock.release();
                 }
                 ASSERT(conn_object);
-                WARN("%lld\n", (long long int)conn_object);
                 conn_object->recv_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
                 conn_object->recv_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
                 conn_object->nofity_system(conn_object->recv_event_fd);
@@ -256,6 +254,7 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 my_qp_info->qp_info.lid = htons(key_object->recv_rdma_conn.portinfo.lid);
                 my_qp_info->qp_info.qpn = htonl(key_object->recv_rdma_conn.qp->qp_num);
                 conn->async_send(my_qp_info, sizeof(ctl_data));
+                ITRACE("RECV_PEER send his qp_info.\n");
             }
         }
 
