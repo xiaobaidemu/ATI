@@ -26,6 +26,8 @@ private:
     socket_listener   *lis;
     char* my_listen_ip;
     int   my_listen_port;
+    struct ibv_device *ibv_dev;
+    struct ibv_context *ctx;
 
     CONN_MAP connecting_map;
     //SUCC_CONN_MAP success_connect_map; //those have already established connect
@@ -36,6 +38,9 @@ private:
 public:
     conn_system(const char* my_listen_ip, int my_listen_port);
     rdma_conn_p2p* init(char* peer_ip, int peer_port);
+    struct ibv_context *get_ibv_ctx(){
+        return ctx;
+    }
 
 private:
     void set_active_connection_callback(connection * conn, std::string ip_port_key);

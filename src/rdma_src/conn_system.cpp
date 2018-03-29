@@ -14,6 +14,22 @@ conn_system::conn_system(const char *ip, int port) {
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
 
+    int num_devices;
+    struct ibv_device **dev_list = ibv_get_device_list(&num_devices);
+    if (!dev_list) {
+        ERROR("Failed to get IB devices list\n");
+        ASSERT(0);
+    }
+    for (int i = 0; i < num_devices; i++) {
+        ibv_dev = dev_list[i];
+        ctx = ibv_open_device(ibv_dev);
+        if(ctx)
+            break;
+    }
+    if(!(ctx)) {
+        ERROR("Cannot open any ibv_device.\n");
+        ASSERT(0);
+    }
     lis = env.create_listener(my_listen_ip, my_listen_port);
     lis->OnAccept = [&](listener*,  connection* conn){
         set_passive_connection_callback(conn);
@@ -44,6 +60,7 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         _lock.acquire();
         if(!connecting_map.InContains(key)){
             conn_object = new rdma_conn_p2p();
+            conn_object->belong_to = this;
             connecting_map.Set(key, conn_object);
         }
         else{
@@ -229,6 +246,7 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                     _lock.acquire();
                     if(!connecting_map.InContains(peer_key)){
                         conn_object = new rdma_conn_p2p();
+                        conn_object->belong_to = this;
                         connecting_map.Set(peer_key, conn_object);
                     }
                     else{

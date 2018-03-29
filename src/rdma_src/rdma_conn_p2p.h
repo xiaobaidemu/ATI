@@ -17,11 +17,13 @@ private:
     exchange_qp_data send_direction_qp;
     unidirection_rdma_conn recv_rdma_conn;
     exchange_qp_data recv_direction_qp;
+    conn_system *belong_to;
 
     void nofity_system(int event_fd);
     void create_qp_info(unidirection_rdma_conn &rdma_conn_info);
 
 public:
+
     rdma_conn_p2p(const rdma_conn_p2p&) = delete;
     rdma_conn_p2p(rdma_conn_p2p && ) = delete;
     rdma_conn_p2p & operator=(const rdma_conn_p2p&) = delete;
