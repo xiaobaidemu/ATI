@@ -117,4 +117,6 @@ private:
     sockaddr_in sa_ipv4;
     sockaddr_in6 sa_ipv6;
     sockaddr_un sa_unix;
+    char* endpoint_ip;
+    int   endpoint_port;
 };

@@ -251,7 +251,7 @@ std::string socket_environment::epoll_events_to_string(const uint32_t events)
     __CHECK_EPOLL_FLAG(EPOLLERR);
     __CHECK_EPOLL_FLAG(EPOLLHUP);
     __CHECK_EPOLL_FLAG(EPOLLRDHUP);
-    __CHECK_EPOLL_FLAG(EPOLLWAKEUP);
+    //__CHECK_EPOLL_FLAG(EPOLLWAKEUP);
     __CHECK_EPOLL_FLAG(EPOLLONESHOT);
     __CHECK_EPOLL_FLAG(EPOLLET);
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <rdma_src/rdma_resource.h>
 enum connection_status
 {
     CONNECTION_UNKNOWN = 0,
@@ -8,6 +9,7 @@ enum connection_status
     CONNECTION_CONNECTED,
     CONNECTION_CONNECT_FAILED,
 };
+
 
 class connection
 {
@@ -30,6 +32,7 @@ public:
     virtual bool async_connect() = 0;
     virtual bool start_receive() = 0;
 
+    exch_state cur_recv_info;
 protected:
     explicit connection(environment* env);
 
@@ -64,6 +67,10 @@ public:
 
     endpoint remote_endpoint() const { return _remote_endpoint; }
     endpoint local_endpoint() const { return _local_endpoint; }
+
+    enum connection_status get_conn_status(){
+        return _status.load();
+    }
 
 private:
     volatile bool _close_finished = false;

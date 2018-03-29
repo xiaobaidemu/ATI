@@ -12,17 +12,19 @@ include_directories(".")
 # Link with thread library
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-link_libraries(Threads::Threads)
+link_libraries(Threads::Threads ibverbs rdmacm)
 
 # Include all header files under src/common/
-file(GLOB COMMON_FILES "src/common/*.cpp" "src/common/*.h" "src/common/*.hpp")
+file(GLOB COMMON_FILES "src/common/*.cpp" "src/common/*.h" "src/common/*.hpp" "src/common/safemap.h")
 file(GLOB TESTS_FILES "tests/*.cpp" "tests/*.h" "tests/*.hpp")
-file(GLOB SRC_FILES "src/*.cpp" "src/*.h" "src/*.hpp")
+file(GLOB SRC_FILES "src/*.cpp" "src/*.h" "src/*.hpp" "src/rdma_src/*.cpp" "src/rdma_src/*.h" "src/rdma_src/conn_system.cpp")
+
 
 set(SOURCE_FILES
     ${COMMON_FILES}
-    ${TESTS_FILES}
     ${SRC_FILES}
 )
 
-add_executable(Sendrecv ${SOURCE_FILES})
+
+add_executable(init_two_process ${SOURCE_FILES} tests_init/init_two_process.cpp)
+add_executable(init_n_process ${SOURCE_FILES} tests_init/init_n_process.cpp)
