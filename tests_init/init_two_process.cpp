@@ -17,7 +17,7 @@ int main()
             WARN("%s:%d ready to init with %s:%d.\n", LOCAL_HOST, LOCAL_PORT+i,
                  PEER_HOST, PEER_PORT_BASE + (i+1)%2);
             conn_system sys("127.0.0.1", LOCAL_PORT+i);
-            rdma_conn_p2p *rdma_conn_object = sys.init(PEER_HOST, PEER_PORT_BASE + (i+1)%2);
+            rdma_conn_p2p *rdma_conn_object = sys.init("127.0.0.1", PEER_PORT_BASE + (i+1)%2);
             ASSERT(rdma_conn_object);
             WARN("%s:%d init finished.\n", LOCAL_HOST, LOCAL_PORT+i);
         });

@@ -78,7 +78,7 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     SUCC("[%s] RECV_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          recv_direction_data.lid, recv_direction_data.qpn);
 
-    SUCC("!!!!!FINISH INIT TO %s.!!!!!\n", key.c_str());
+    SUCC("[=====FINISH INIT TO %s.=====]\n", key.c_str());
     return conn_object;
 }
 
@@ -98,7 +98,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         my_qp_info->qp_info.qpn = htonl(key_object->send_rdma_conn.qp->qp_num);
         conn->async_send(my_qp_info, sizeof(ctl_data));
 
-        SUCC("ready to send qp_info to %s (len:%d).\n", key.c_str(), (int)sizeof(ctl_data));
+        WARN("ready to send qp_info to %s (len:%d).\n", key.c_str(), (int)sizeof(ctl_data));
     };
 
     send_conn->OnConnectError = [key, this](connection *conn, const int error){
