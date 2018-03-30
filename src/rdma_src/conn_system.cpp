@@ -126,6 +126,12 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         }
         else if(length ==sizeof("done")){
             IDEBUG("Have already send the DONE to %s.\n", key.c_str());
+            rdma_conn_p2p *pending_conn;
+            connecting_map.Get(key, &pending_conn); ASSERT(pending_conn);
+            pending_conn->send_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
+            pending_conn->send_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
+            pending_conn->nofity_system(pending_conn->send_event_fd);
+            //WARN("nofity_system send_event_fd:%d\n",pending_conn->send_event_fd);
         }
 
     };
@@ -170,12 +176,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
             ASSERT(conn->cur_recv_info.qp_all_info.type == HEAD_TYPE_EXCH);
             ASSERT(peer_key == key);
 
-            rdma_conn_p2p *pending_conn;
-            connecting_map.Get(key, &pending_conn); ASSERT(pending_conn);
-            pending_conn->send_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
-            pending_conn->send_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
-            pending_conn->nofity_system(pending_conn->send_event_fd);
-            //WARN("nofity_system send_event_fd:%d\n",pending_conn->send_event_fd);
+            
         }
     };
 
@@ -207,6 +208,13 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
         size_t cur_recvd = conn->cur_recv_info.recvd_size;
         if(cur_recvd == sizeof(ctl_data)){
             IDEBUG("Peer has already recv the qp info from me.(%s)\n", (char*) const_cast<void*>(buffer));
+             std::string peer_key = std::string(conn->cur_recv_info.qp_all_info.ip) + "_" +
+                                       std::to_string(conn->cur_recv_info.qp_all_info.port);
+                //IDEBUG("recv_conn:key(%s)\n",peer_key.c_str());
+
+            rdma_conn_p2p *conn_object = nullptr;
+            ASSERT(connecting_map.Get(peer_key, &conn_object));
+            conn_object->nofity_system(conn_object->recv_event_fd);
         }
         else{
             if(cur_recvd + length < sizeof(ctl_data)){
@@ -244,10 +252,8 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
 
                 //ready to send my qp information
                 conn_object->create_qp_info(conn_object->recv_rdma_conn);
-                conn_object->nofity_system(conn_object->recv_event_fd);
                 conn_object->recv_socket_conn = (socket_connection*)conn;
-                //WARN("nofity_system recv_event_fd:%d\n", conn_object->recv_event_fd);
-
+                
                 ctl_data *my_qp_info = new ctl_data();
                 strcpy(my_qp_info->ip, my_listen_ip);
                 my_qp_info->port = my_listen_port;
@@ -255,6 +261,9 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 my_qp_info->qp_info.lid = htons(conn_object->recv_rdma_conn.portinfo.lid);
                 my_qp_info->qp_info.qpn = htonl(conn_object->recv_rdma_conn.qp->qp_num);
                 conn->async_send(my_qp_info, sizeof(ctl_data));
+                //conn_object->nofity_system(conn_object->recv_event_fd);
+                //WARN("nofity_system recv_event_fd:%d\n", conn_object->recv_event_fd);
+
             }
         }
 
