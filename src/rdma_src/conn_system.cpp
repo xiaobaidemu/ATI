@@ -55,6 +55,7 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
 
     socket_connection *send_conn = env.create_connection(peer_ip, peer_port);
     set_active_connection_callback(send_conn, key);
+    conn_object->send_socket_conn = send_conn;
     send_conn->async_connect();
     IDEBUG("Ready to establish with %s\n", key.c_str());
 
@@ -78,7 +79,9 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     SUCC("[%s] RECV_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          recv_direction_data.lid, recv_direction_data.qpn);
 
-    SUCC("[=====FINISH INIT TO %s.=====]\n", key.c_str());
+    SUCC("[===== %s_%d FINISH INIT TO %s.=====]\n", my_listen_ip, my_listen_port, key.c_str());
+    //close used fd
+    conn_object->clean_used_fd();
     return conn_object;
 }
 
@@ -128,7 +131,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
     };
     send_conn->OnHup = [key, this](connection* conn, const int error){
         if (error == 0) {
-            SUCC("[OnHup] Because rank %s is close normally...\n", key.c_str());
+            TRACE("[OnHup] Because rank %s is close normally...\n", key.c_str());
         }
         else {
             ERROR("[OnHup] Because rank %s is close Abnormal...\n", key.c_str());
@@ -137,9 +140,9 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
 
     send_conn->OnClose = [key, this](connection* conn){
         if(((socket_connection*)conn)->get_conn_status() == CONNECTION_CONNECT_FAILED)
-            IDEBUG("the failed connection close %s.\n", key.c_str());
+            DEBUG("the failed connection close %s.\n", key.c_str());
         else
-            IDEBUG("send_conn close normally.\n");
+            DEBUG("send_conn close normally.\n");
     };
 
     send_conn->OnSendError = [key, this](connection* conn, const void* buffer, const size_t length, const size_t sent_length, const int error) {
@@ -172,7 +175,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
             pending_conn->send_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
             pending_conn->send_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
             pending_conn->nofity_system(pending_conn->send_event_fd);
-            WARN("nofity_system send_event_fd:%d\n",pending_conn->send_event_fd);
+            //WARN("nofity_system send_event_fd:%d\n",pending_conn->send_event_fd);
         }
     };
 
@@ -186,7 +189,7 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
         delete (ctl_data*)const_cast<void*>(buffer);
     };
     recv_conn->OnHup = [this](connection* conn, const int error){
-        if (error == 0) SUCC("[OnHup] recv_conn close normally.\n");
+        if (error == 0) TRACE("[OnHup] recv_conn close normally.\n");
         else ERROR("[OnHup] recv_conn close Abnormal...\n");
     };
 
@@ -240,18 +243,17 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 conn_object->recv_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
 
                 //ready to send my qp information
-                rdma_conn_p2p * key_object;
-                ASSERT(connecting_map.Get(peer_key, &key_object));
-                key_object->create_qp_info(key_object->recv_rdma_conn);
+                conn_object->create_qp_info(conn_object->recv_rdma_conn);
                 conn_object->nofity_system(conn_object->recv_event_fd);
-                WARN("nofity_system recv_event_fd:%d\n", conn_object->recv_event_fd);
+                conn_object->recv_socket_conn = (socket_connection*)conn;
+                //WARN("nofity_system recv_event_fd:%d\n", conn_object->recv_event_fd);
 
                 ctl_data *my_qp_info = new ctl_data();
                 strcpy(my_qp_info->ip, my_listen_ip);
                 my_qp_info->port = my_listen_port;
                 my_qp_info->type = HEAD_TYPE_EXCH;
-                my_qp_info->qp_info.lid = htons(key_object->recv_rdma_conn.portinfo.lid);
-                my_qp_info->qp_info.qpn = htonl(key_object->recv_rdma_conn.qp->qp_num);
+                my_qp_info->qp_info.lid = htons(conn_object->recv_rdma_conn.portinfo.lid);
+                my_qp_info->qp_info.qpn = htonl(conn_object->recv_rdma_conn.qp->qp_num);
                 conn->async_send(my_qp_info, sizeof(ctl_data));
             }
         }

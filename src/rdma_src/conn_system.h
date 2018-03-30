@@ -32,10 +32,12 @@ private:
     //PENDING_CONN_MAP passive_connect_map;
     //PENDING_CONN_MAP active_connect_map;
 
-
 public:
     conn_system(const char* my_listen_ip, int my_listen_port);
     rdma_conn_p2p* init(char* peer_ip, int peer_port);
+    void conn_system_finalize(){
+        //env.dispose();
+    }
 
 private:
     void set_active_connection_callback(connection * conn, std::string ip_port_key);

@@ -65,6 +65,7 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info){
 
 
     struct ibv_qp_attr attr;
+    memset(&attr, 0, sizeof(attr));
     attr.qp_state = IBV_QPS_INIT;
     attr.pkey_index = 0;
     attr.port_num   = rdma_conn_info.ib_port;
@@ -79,4 +80,9 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info){
         ASSERT(0);
     }
     ITRACE("Finish create the qp ~~~~~~~.\n");
+}
+
+void rdma_conn_p2p::clean_used_fd(){
+    send_socket_conn->async_close();
+    recv_socket_conn->async_close();
 }

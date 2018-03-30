@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     std::vector<std::thread> processes(process_num);
 
     for(int i = 0;i < process_num;i++){
-        processes[i] = std::thread([i](){
+        processes[i] = std::thread([i, process_num](){
             conn_system sys(LOCAL_HOST, LOCAL_PORT + i);
             for(int k = 0;k < process_num;k++){
                 if(k != i) {
