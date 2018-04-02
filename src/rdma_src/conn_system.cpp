@@ -1,5 +1,13 @@
 #include "conn_system.h"
 
+conn_system::~conn_system() {
+    WARN("Transfer System is ready to close.\n");
+    env.dispose();
+    connecting_map.Foreach([](std::string key, rdma_conn_p2p * conn){
+        conn->poll_thread->join();
+    });
+}
+
 void conn_system::splitkey(const std::string& s, std::string& ip, int &port, const std::string& c)
 {
     std::string::size_type pos1, pos2;

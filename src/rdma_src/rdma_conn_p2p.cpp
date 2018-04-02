@@ -4,7 +4,7 @@
 #define MAX_SGE_LEN    10
 #define MAX_SMALLMSG_SIZE      (1024)
 #define MAX_POST_RECV_NUM      (1024)
-#define RECVD_BUF_SIZE    (1024*1024*256)
+#define RECVD_BUF_SIZE    (1024*1024*1)
 rdma_conn_p2p::rdma_conn_p2p() {
     send_event_fd = CCALL(eventfd(0, EFD_CLOEXEC));
     recv_event_fd = CCALL(eventfd(0, EFD_CLOEXEC));

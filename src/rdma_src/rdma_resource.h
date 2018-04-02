@@ -43,6 +43,11 @@ struct status_recv_buf{
     recvd_buf_info buf_info;
     size_t pos_irecv;
     size_t pos_isend;
+public:
+    status_recv_buf(){
+        pos_irecv = 0;
+        pos_isend = 0;
+    }
 };
 
 

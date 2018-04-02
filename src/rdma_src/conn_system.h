@@ -7,6 +7,7 @@
 #include <common/safemap.h>
 #include <endian.h>
 #include <byteswap.h>
+#include "rdma_conn_p2p.h"
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
@@ -27,10 +28,7 @@ public:
     conn_system(const conn_system&) = delete;
     conn_system(conn_system && ) = delete;
     conn_system & operator=(const conn_system&) = delete;
-    ~conn_system() {
-        WARN("Transfer System is ready to close.\n");
-        env.dispose();
-    }
+    ~conn_system() ;
 
 private:
     lock _lock;//use for double check
@@ -48,7 +46,7 @@ public:
     conn_system(const char* my_listen_ip, int my_listen_port);
     rdma_conn_p2p* init(char* peer_ip, int peer_port);
     void conn_system_finalize(){
-        //env.dispose();
+        env.dispose();
     }
 
 private:

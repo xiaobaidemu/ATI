@@ -7,6 +7,7 @@ template <typename K, typename T>
 class safemap
 {
 public:
+    typedef std::map<K, T> Contain;
     void Set(const K & key, const T& value) {
         _lock.acquire_run_release([&] {
             _map[key] = value;
@@ -33,6 +34,17 @@ public:
         });
         return success;
     }
+
+    void Foreach(const std::function<void(K , T)> fun) {
+        _lock.acquire();
+        typename  Contain:: iterator itr = _map.begin();
+        for (; itr != _map.end(); ++itr) {
+            T &v = _map[itr->first];
+            fun(itr->first, v);
+        }
+        _lock.release();
+    }
+
 
 private:
     std::map<K, T> _map;
