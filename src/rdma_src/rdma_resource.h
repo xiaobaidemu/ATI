@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <infiniband/verbs.h>
+#include <common/lock.h>
 
 struct exchange_qp_data {
     uint16_t lid; //LID of IB port (Local IDentifier)
@@ -95,7 +96,9 @@ struct send_req_clt_info{
     size_t size;
 };
 
-
+struct non_block_handle{
+    lock _lock;
+};
 
 typedef struct exchange_qp_data       exchange_qp_data;
 typedef struct unidirection_rdma_conn unidirection_rdma_conn;
@@ -105,5 +108,6 @@ typedef struct recvd_buf_size         recvd_buf_size;
 typedef struct status_recv_buf        status_recv_buf;
 typedef struct ctl_flow_info          ctl_flow_info;
 typedef struct send_req_clt_info      send_req_clt_info;
+typedef struct non_block_handle       non_block_handle;
 
 #endif //SENDRECV_RDMA_RESOURCE_H

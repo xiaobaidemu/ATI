@@ -69,7 +69,7 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     SUCC("[%s] SEND_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          send_direction_data.lid, send_direction_data.qpn);
     recvd_buf_info &tmp_send_info = conn_object->send_peer_buf_status.buf_info;
-    SUCC("[%s] SEND_direction send_peer_buf_status: addr 0x%llx, rkey 0x%llx, size 0x%llx, mr 0x%llx", key.c_str(),
+    SUCC("[%s] SEND_direction send_peer_buf_status: addr 0x%llx, rkey 0x%llx, size 0x%llx, mr 0x%llx\n", key.c_str(),
          (long long)tmp_send_info.addr, (long long)tmp_send_info.rkey, (long long)tmp_send_info.size, (long long)tmp_send_info.buff_mr);
 
 
@@ -82,12 +82,20 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     SUCC("[%s] RECV_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          recv_direction_data.lid, recv_direction_data.qpn);
     recvd_buf_info &tmp_recv_info = conn_object->recv_local_buf_status.buf_info;
-    SUCC("[%s] RECV_direction recv_local_buf_status: addr 0x%llx, rkey 0x%llx, size 0x%llx, mr 0x%llx", key.c_str(),
+    SUCC("[%s] RECV_direction recv_local_buf_status: addr 0x%llx, rkey 0x%llx, size 0x%llx, mr 0x%llx\n", key.c_str(),
          (long long)tmp_recv_info.addr, (long long)tmp_recv_info.rkey, (long long)tmp_recv_info.size, (long long)tmp_recv_info.buff_mr);
 
     SUCC("[===== %s_%d FINISH INIT TO %s.=====]\n", my_listen_ip, my_listen_port, key.c_str());
     //close used fd
     conn_object->clean_used_fd();
+    //start thread used for poll
+    conn_object->poll_thread = new std::thread([conn_object]{
+        ASSERT(conn_object);
+        WARN("START enter the thread.\n");
+        sleep(3);
+        WARN("READY leave the thread.\n");
+    });
+    ERROR("===================\n");
     return conn_object;
 }
 
@@ -140,7 +148,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
             pending_conn->send_peer_buf_status.buf_info.addr = ntohll(conn->cur_recv_info.qp_all_info.peer_buf_info.addr);
             pending_conn->send_peer_buf_status.buf_info.rkey = ntohl(conn->cur_recv_info.qp_all_info.peer_buf_info.rkey);
             pending_conn->send_peer_buf_status.buf_info.size = ntohll(conn->cur_recv_info.qp_all_info.peer_buf_info.size);
-            pending_conn->send_peer_buf_status.buf_info.buff_mr = ntohll(conn->cur_recv_info.qp_all_info.peer_buf_info.size);
+            pending_conn->send_peer_buf_status.buf_info.buff_mr = ntohll(conn->cur_recv_info.qp_all_info.peer_buf_info.buff_mr);
 
             //modify the qp status
             pending_conn->modify_qp_to_rtr(pending_conn->send_rdma_conn.qp, pending_conn->send_direction_qp.qpn,
