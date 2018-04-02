@@ -68,6 +68,9 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
          conn_object->send_rdma_conn.portinfo.lid, conn_object->send_rdma_conn.qp->qp_num);
     SUCC("[%s] SEND_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          send_direction_data.lid, send_direction_data.qpn);
+    recvd_buf_info &tmp_send_info = conn_object->send_peer_buf_status.buf_info;
+    SUCC("[%s] SEND_direction send_peer_buf_status: addr 0x%llx, rkey 0x%llx, size 0x%llx, mr 0x%llx", key.c_str(),
+         (long long)tmp_send_info.addr, (long long)tmp_send_info.rkey, (long long)tmp_send_info.size, (long long)tmp_send_info.buff_mr);
 
 
     CCALL(read(conn_object->recv_event_fd, &dummy, sizeof(dummy)));
@@ -78,6 +81,9 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
          conn_object->recv_rdma_conn.portinfo.lid, conn_object->recv_rdma_conn.qp->qp_num);
     SUCC("[%s] RECV_direction peer_qp_info: LID 0x%04x, QPN 0x%06x\n", key.c_str(),
          recv_direction_data.lid, recv_direction_data.qpn);
+    recvd_buf_info &tmp_recv_info = conn_object->recv_local_buf_status.buf_info;
+    SUCC("[%s] RECV_direction recv_local_buf_status: addr 0x%llx, rkey 0x%llx, size 0x%llx, mr 0x%llx", key.c_str(),
+         (long long)tmp_recv_info.addr, (long long)tmp_recv_info.rkey, (long long)tmp_recv_info.size, (long long)tmp_recv_info.buff_mr);
 
     SUCC("[===== %s_%d FINISH INIT TO %s.=====]\n", my_listen_ip, my_listen_port, key.c_str());
     //close used fd
@@ -91,7 +97,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         rdma_conn_p2p * key_object;
         ASSERT(connecting_map.Get(key, &key_object));
         //you need create a new qp
-        key_object->create_qp_info(key_object->send_rdma_conn);
+        key_object->create_qp_info(key_object->send_rdma_conn, false);
 
         ctl_data *my_qp_info = new ctl_data();
         strcpy(my_qp_info->ip, my_listen_ip);
@@ -130,6 +136,16 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
             connecting_map.Get(key, &pending_conn); ASSERT(pending_conn);
             pending_conn->send_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
             pending_conn->send_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
+
+            pending_conn->send_peer_buf_status.buf_info.addr = ntohll(conn->cur_recv_info.qp_all_info.peer_buf_info.addr);
+            pending_conn->send_peer_buf_status.buf_info.rkey = ntohl(conn->cur_recv_info.qp_all_info.peer_buf_info.rkey);
+            pending_conn->send_peer_buf_status.buf_info.size = ntohll(conn->cur_recv_info.qp_all_info.peer_buf_info.size);
+            pending_conn->send_peer_buf_status.buf_info.buff_mr = ntohll(conn->cur_recv_info.qp_all_info.peer_buf_info.size);
+
+            //modify the qp status
+            pending_conn->modify_qp_to_rtr(pending_conn->send_rdma_conn.qp, pending_conn->send_direction_qp.qpn,
+                                           pending_conn->send_direction_qp.lid, pending_conn->send_rdma_conn.ib_port);
+            pending_conn->modify_qp_to_rts(pending_conn->send_rdma_conn.qp);
             pending_conn->nofity_system(pending_conn->send_event_fd);
             //WARN("nofity_system send_event_fd:%d\n",pending_conn->send_event_fd);
         }
@@ -251,19 +267,22 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 conn_object->recv_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
 
                 //ready to send my qp information
-                conn_object->create_qp_info(conn_object->recv_rdma_conn);
+
+                conn_object->create_qp_info(conn_object->recv_rdma_conn, true);
                 conn_object->recv_socket_conn = (socket_connection*)conn;
-                
+
                 ctl_data *my_qp_info = new ctl_data();
                 strcpy(my_qp_info->ip, my_listen_ip);
                 my_qp_info->port = my_listen_port;
                 my_qp_info->type = HEAD_TYPE_EXCH;
                 my_qp_info->qp_info.lid = htons(conn_object->recv_rdma_conn.portinfo.lid);
                 my_qp_info->qp_info.qpn = htonl(conn_object->recv_rdma_conn.qp->qp_num);
-                conn->async_send(my_qp_info, sizeof(ctl_data));
-                //conn_object->nofity_system(conn_object->recv_event_fd);
-                //WARN("nofity_system recv_event_fd:%d\n", conn_object->recv_event_fd);
 
+                my_qp_info->peer_buf_info.addr = htonll(conn_object->recv_local_buf_status.buf_info.addr);
+                my_qp_info->peer_buf_info.rkey = htonl(conn_object->recv_local_buf_status.buf_info.rkey);
+                my_qp_info->peer_buf_info.size = htonll(conn_object->recv_local_buf_status.buf_info.size);
+                my_qp_info->peer_buf_info.buff_mr = htonll(conn_object->recv_local_buf_status.buf_info.buff_mr);
+                conn->async_send(my_qp_info, sizeof(ctl_data));
             }
         }
 
