@@ -28,7 +28,7 @@ public:
     conn_system(const conn_system&) = delete;
     conn_system(conn_system && ) = delete;
     conn_system & operator=(const conn_system&) = delete;
-    ~conn_system() ;
+    ~conn_system();
 
 private:
     lock _lock;//use for double check
@@ -53,6 +53,7 @@ private:
     void set_active_connection_callback(connection * conn, std::string ip_port_key);
     void set_passive_connection_callback(connection * conn);
     void splitkey(const std::string& s, std::string& ip, int &port, const std::string& c);
+    void run_poll_thread(rdma_conn_p2p* conn_object);
 };
 
 #include "rdma_conn_p2p.h"

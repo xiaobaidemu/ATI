@@ -30,14 +30,21 @@ private:
     struct ibv_mr     *post_array_mr;
 
     std::queue<pending_send> pending_queue;
+    std::queue<int>          irecv_queue;
     std::thread *poll_thread;
+    pool<addr_mr_pair>  addr_mr_pool;
+    arraypool<irecv_info> irecv_info_pool;
+    arraypool<isend_info> isend_info_pool;
 
-    static void test_thread(int i){
-        WARN("START enter the thread. %d\n", i);
-        sleep(3);
-        WARN("READY leave the thread. %d\n", i);
+    lock _lock;
+    bool isruning;
 
-    }
+    int used_recv_num;
+    size_t recvd_bufsize;
+    int last_used_index;
+
+
+    void poll_func(rdma_conn_p2p* conn);
 
     void nofity_system(int event_fd);
     void create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool isrecvqp);
@@ -45,11 +52,14 @@ private:
     void modify_qp_to_rts(struct ibv_qp *qp);
     void clean_used_fd();
 
-    int  pp_post_recv(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t lkey, uint32_t len);
-    int  pp_post_send();
+    int  pp_post_recv(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t lkey, uint32_t len, struct ibv_mr *mr);
+    int  pp_post_send(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t lkey, uint32_t len, bool isinline, bool is_singal);
 
-    int isend(const void *buf, size_t count, non_block_handle *req);
-    int irecv(void *buf, size_t count, non_block_handle *req);
+    int  pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, uint32_t rkey, uint32_t imm_data);
+    bool do_send_completion(int n, struct ibv_wc *wc);
+    bool do_recv_completion(int n, struct ibv_wc *wc);
+
+
 
 public:
     rdma_conn_p2p(const rdma_conn_p2p&) = delete;
@@ -57,8 +67,9 @@ public:
     rdma_conn_p2p & operator=(const rdma_conn_p2p&) = delete;
 
     rdma_conn_p2p();
-
-
+    int isend(const void *buf, size_t count, non_block_handle *req);
+    int irecv(void *buf, size_t count, non_block_handle *req);
+    bool wait(non_block_handle* req);
     //bool isend();
     //bool irecv();
 };

@@ -1,9 +1,11 @@
 #include "conn_system.h"
+#include <functional>
 
 conn_system::~conn_system() {
     WARN("Transfer System is ready to close.\n");
     env.dispose();
     connecting_map.Foreach([](std::string key, rdma_conn_p2p * conn){
+        conn->isruning = false;
         conn->poll_thread->join();
     });
 }
@@ -96,17 +98,14 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     SUCC("[===== %s_%d FINISH INIT TO %s.=====]\n", my_listen_ip, my_listen_port, key.c_str());
     //close used fd
     conn_object->clean_used_fd();
-    //start thread used for poll
-    conn_object->poll_thread = new std::thread([conn_object]{
-        ASSERT(conn_object);
-        WARN("START enter the thread.\n");
-        sleep(3);
-        WARN("READY leave the thread.\n");
-    });
+    run_poll_thread(conn_object);
     ERROR("===================\n");
     return conn_object;
 }
 
+void conn_system::run_poll_thread(rdma_conn_p2p* conn_object){
+    conn_object->poll_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_func, conn_object, conn_object));
+}
 void conn_system::set_active_connection_callback(connection *send_conn, std::string key) {
     send_conn->OnConnect = [key, this](connection* conn) {
         conn->start_receive();

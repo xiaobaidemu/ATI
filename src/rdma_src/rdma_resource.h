@@ -73,6 +73,9 @@ struct pending_send{
     union{
         struct{
             size_t size;
+            uintptr_t big_addr;
+            struct ibv_mr *big_mr;
+            int    isend_index;
         }big;
         struct {
             void   *pos;
@@ -82,28 +85,77 @@ struct pending_send{
 };
 
 struct ctl_flow_info{ //irecver with send these info to isender, isender will post_recv these info
-    int type;
+    int type;// 0 means ctl, 1 means big
     union{
         struct{
             int used_recv_num;//related with post_recv
             int recvd_bufsize;
         }ctl;
         struct{
-            void *recv_buffer;
-            void *send_buffer;
+            uintptr_t recv_buffer;
             uint32_t rkey;
-            int  index;
+            uintptr_t send_buffer;
+            struct ibv_mr *send_mr;
+            int  index;      //use for irecv_info_pool
+            int  send_index; //use for isend_info_pool
         }big;
     };
 };
 
-struct send_req_clt_info{
-    size_t size;
+
+struct addr_mr_pair{
+    uintptr_t     send_addr;
+    struct ibv_mr *send_mr;
+    uint32_t      len;
+    int           isend_index;
 };
 
+struct send_req_clt_info{
+    uintptr_t     send_addr;
+    struct ibv_mr *send_mr;
+    uint32_t      len;
+    int           isend_index;
+};
+
+/*struct send_ack_clt_info{
+    uintptr_t recv_addr;
+    uint32_t  rkey;
+    uintptr_t send_addr;
+    struct ibv_mr *send_mr;
+    int       index;
+};*/
+enum RECV_TYPE{
+    BIG_WRITE_IMM = 0,
+    SMALL_WRITE_IMM,
+    SEND_REQ_MSG,
+};
+
+enum WAIT_TYPE{
+    WAIT_ISEND = 0,
+    WAIT_IRECV,
+};
 struct non_block_handle{
     lock _lock;
+    int  index;//related to arraypool,array
+    enum WAIT_TYPE type;
 };
+
+struct irecv_info{
+    uintptr_t     recv_addr;
+    size_t        recv_size;
+    struct ibv_mr *recv_mr;
+    non_block_handle *req_handle;
+};
+
+struct isend_info{
+    uintptr_t     send_addr;
+    size_t        send_size;
+    struct ibv_mr *send_mr;
+    non_block_handle *req_handle;
+};
+
+
+
 
 typedef struct exchange_qp_data       exchange_qp_data;
 typedef struct unidirection_rdma_conn unidirection_rdma_conn;
@@ -114,5 +166,7 @@ typedef struct status_recv_buf        status_recv_buf;
 typedef struct ctl_flow_info          ctl_flow_info;
 typedef struct send_req_clt_info      send_req_clt_info;
 typedef struct non_block_handle       non_block_handle;
-
+typedef struct addr_mr_pair           addr_mr_pair;
+typedef struct irecv_info             irecv_info;
+//typedef struct send_ack_clt_info      send_ack_clt_info;
 #endif //SENDRECV_RDMA_RESOURCE_H
