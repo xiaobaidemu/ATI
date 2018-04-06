@@ -28,7 +28,6 @@ int main(int argc, char **argv)
                  LOCAL_HOST, LOCAL_PORT + i, process_num - 1);
         });
     }
-
     for(auto& t: processes)
         t.join();
     return 0;

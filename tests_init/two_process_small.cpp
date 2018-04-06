@@ -7,6 +7,7 @@
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
 #define DATA_LEN            (128)
+#define ITERS               (1)
 
 /*
  * test case:
@@ -31,17 +32,19 @@ int main()
             ASSERT(rdma_conn_object);
             WARN("%s:%d init finished.\n", LOCAL_HOST, LOCAL_PORT+i);
             char *recv_buf = (char*)malloc(DATA_LEN);
-;            if(i == 0){
-                non_block_handle isend_req;
+            timer _timer;
+            non_block_handle isend_req, irecv_req;
+            for(int iter = 0; iter < ITERS;i++){
                 rdma_conn_object->isend(dummy_data, DATA_LEN, &isend_req);
-                rdma_conn_object->wait(&isend_req);
-            }
-            else{
-                non_block_handle irecv_req;
                 rdma_conn_object->irecv(recv_buf, DATA_LEN, &irecv_req);
+                rdma_conn_object->wait(&isend_req);
                 rdma_conn_object->wait(&irecv_req);
+                ASSERT(memcpy(dummy_data, recv_buf, DATA_LEN) == 0);
             }
-
+            double time_consume = _timer.elapsed();
+            size_t total_size = DATA_LEN*2*ITERS/1024/1024;
+            double speed = (double)total_size/time_consume;
+            SUCC("time %.2lfs, total_size %lldMB, speed %.2lf MB/sec\n", time_consume, total_size, speed);
         });
     }
     for(auto& t: processes)
