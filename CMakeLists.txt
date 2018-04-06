@@ -4,6 +4,7 @@ project(Sendrecv CXX)
 
 # Enable C++ 11
 set(CMAKE_CXX_STANDARD 11)
+add_definitions("-Wall -g")
 
 # Add src to include directory
 include_directories("src")

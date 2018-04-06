@@ -1,9 +1,10 @@
 #include "rdma_conn_p2p.h"
 #include "rdma_resource.h"
+#include "errno.h"
 
-#define RX_DEPTH (1024)
-#define MAX_INLINE_LEN 1024
-#define MAX_SGE_LEN    10
+#define RX_DEPTH 500
+#define MAX_INLINE_LEN 128
+#define MAX_SGE_LEN    1
 #define MAX_SMALLMSG_SIZE      (1024)
 #define MAX_POST_RECV_NUM      (1024)
 #define RECVD_BUF_SIZE    (1024*1024*4)
@@ -73,6 +74,7 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
     init_attr.qp_context = (void*)this;
 
     rdma_conn_info.qp = ibv_create_qp(rdma_conn_info.pd, &init_attr);
+    //ERROR("errno: %s\n",strerror(errno));
     ASSERT(rdma_conn_info.qp);
 
 
@@ -93,7 +95,7 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
     }
 
     if(isrecvqp){ //means receiver need to malloc a piece of recvd_buffer space and ibv_post_recv
-        void *cache_addr = malloc(RECVD_BUF_SIZE + MAX_SMALLMSG_SIZE);
+        char *cache_addr = (char*)malloc(RECVD_BUF_SIZE + MAX_SMALLMSG_SIZE);
         ibv_mr *buff_mr     = ibv_reg_mr(rdma_conn_info.pd, cache_addr, RECVD_BUF_SIZE + MAX_SMALLMSG_SIZE,
                                          IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
 
@@ -115,14 +117,14 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
         }
         modify_qp_to_rtr(rdma_conn_info.qp, recv_direction_qp.qpn, recv_direction_qp.lid, rdma_conn_info.ib_port);
         modify_qp_to_rts(rdma_conn_info.qp);
-        ITRACE("Finish create the recv qp ~~~~~~~.\n");
+        SUCC("Finish create the recv qp ~~~~~~~.\n");
     }
     else{
         //ibv_post_recv
         ctl_flow_mr = ibv_reg_mr(rdma_conn_info.pd, &ctl_flow, sizeof(ctl_flow),
                                  IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
         pp_post_recv(rdma_conn_info.qp, (uintptr_t)&ctl_flow, ctl_flow_mr->lkey, sizeof(ctl_flow), ctl_flow_mr);
-        ITRACE("Finish Half create the send qp ~~~~~~~.\n");
+        SUCC("Finish Half create the send qp ~~~~~~~.\n");
     }
 
 }
@@ -150,7 +152,6 @@ void rdma_conn_p2p::modify_qp_to_rtr(struct ibv_qp *qp, uint32_t remote_qpn, uin
 void rdma_conn_p2p::modify_qp_to_rts(struct ibv_qp *qp) {
     struct ibv_qp_attr attr;
     int flags;
-    int rc;
     memset(&attr, 0, sizeof(attr));
     attr.qp_state = IBV_QPS_RTS;
     attr.timeout = 14;
@@ -204,6 +205,7 @@ int rdma_conn_p2p::pp_post_send(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t 
 int rdma_conn_p2p::pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, uint32_t rkey, uint32_t imm_data){
     struct ibv_send_wr wr, *bad_wr = nullptr;
     struct ibv_sge list;
+    memset(&list, 0, sizeof(list));
     memset(&wr, 0, sizeof(wr));
     list.addr   = mr_pair->send_addr;
     list.length = mr_pair->len;
@@ -250,7 +252,7 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
     for(int i = 0;i < n;i++){
         struct ibv_wc *wc = wc_send + i;
         if(wc->status != IBV_WC_SUCCESS){
-            ERROR("some error when do_recv_completion.\n");
+            ERROR("some error when do_send_completion (%s).\n",ibv_wc_status_str(wc->status));
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
@@ -281,17 +283,18 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
             addr_mr_pool.push(mr_pair);
             isend_info_pool.get(isend_index)->req_handle->_lock.release();
         }else{
-            ERROR("unknown type when do_send_completion");
+            ERROR("unknown type when do_recv_completion");
             return false;
         }
     }
+    return true;
 }
 
 bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
     for(int i = 0;i < n;i++){
         struct ibv_wc *wc = wc_recv+i;
         if(wc->status != IBV_WC_SUCCESS){
-            ERROR("some error when do_recv_completion.\n");
+            ERROR("some error when do_recv_completion (%s).\n",ibv_wc_status_str(wc->status));
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
@@ -299,13 +302,14 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
         int index = -1;
         if(op == IBV_WC_RECV_RDMA_WITH_IMM){
             uint32_t imm_data = ntohl(wc->imm_data);
-            int type = imm_data >> 31;
-            if(type){//RECV BIG_MSG
+            int type_bit = imm_data >> 31;
+            if(type_bit){//RECV BIG_MSG
                 index = imm_data & IMM_DATA_SMALL_MASK;
                 type  = BIG_WRITE_IMM;
             }
             else{
                 index = imm_data; //small_msg_size
+                //ERROR("xxxxxxxxxxxxxxxxxxxxx, %d\n", index);
                 type = SMALL_WRITE_IMM;
             }
         }
@@ -396,6 +400,7 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
         _lock.release();
 
     }
+    return true;
 }
 
 int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
@@ -446,17 +451,19 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         addr_mr_pair *mr_pair = addr_mr_pool.pop();//remember to recycle
         ASSERT(mr_pair);
         mr_pair->send_addr = (uintptr_t)const_cast<void*>(buf);
-        mr_pair->send_mr   = ibv_reg_mr(send_rdma_conn.pd, const_cast<void*>(buf), count, IBV_ACCESS_LOCAL_WRITE);
+        mr_pair->send_mr   = ibv_reg_mr(send_rdma_conn.pd, const_cast<void*>(buf), count, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+        ASSERT((uintptr_t)mr_pair->send_mr->addr == (uintptr_t)mr_pair->send_addr);
         mr_pair->len       = count;
         mr_pair->isend_index = isend_index;
         uint32_t  imm_data = 0;//IMM_DATA_SMALL_MASK
         imm_data |= count;
 
-        pp_post_write(mr_pair, imm_data, send_peer_buf_status.buf_info.addr + pos_s,
-                      send_peer_buf_status.buf_info.rkey);
+        pp_post_write(mr_pair, send_peer_buf_status.buf_info.addr + pos_s,
+                      send_peer_buf_status.buf_info.rkey, imm_data);
         send_peer_buf_status.pos_isend = (pos_s + count) % n;
-        ITR_SEND("(SMALL_MSG sending...) send_addr %llx, len %d\n", (long long)mr_pair->send_addr, (int)count);
+        ITR_SEND("(SMALL_MSG sending...) send_addr %llx, len %d, isend_index %d\n", (long long unsigned int)mr_pair->send_addr, (int)count, isend_index);
     }
+    return 1;
 }
 int rdma_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req){
     //the lock method need to be reconsidered
@@ -519,6 +526,7 @@ int rdma_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req){
         }
     }
     _lock.release();
+    return 1;
 }
 
 bool rdma_conn_p2p::wait(non_block_handle* req){
@@ -534,6 +542,7 @@ bool rdma_conn_p2p::wait(non_block_handle* req){
         SUCC("(isend) wait finished , index %d\n", req->index);
     }
     req->_lock.release();
+    return true;
 }
 
 void rdma_conn_p2p::clean_used_fd(){

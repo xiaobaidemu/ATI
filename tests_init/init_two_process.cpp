@@ -31,7 +31,7 @@ int main()
             ASSERT(rdma_conn_object);
             WARN("%s:%d init finished.\n", LOCAL_HOST, LOCAL_PORT+i);
             char *recv_buf = (char*)malloc(DATA_LEN);
-            if(i == 0){
+;            if(i == 0){
                 non_block_handle isend_req;
                 rdma_conn_object->isend(dummy_data, DATA_LEN, &isend_req);
                 rdma_conn_object->wait(&isend_req);

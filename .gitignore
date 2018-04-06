@@ -2,7 +2,7 @@
 # CLion files
 /.idea/
 /cmake-build-*/
-
+/build/
 # CMake results
 /CMakeCache.txt
 /CMakeFiles/

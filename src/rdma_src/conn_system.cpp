@@ -99,7 +99,7 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     //close used fd
     conn_object->clean_used_fd();
     run_poll_thread(conn_object);
-    ERROR("===================\n");
+    //ERROR("===================\n");
     return conn_object;
 }
 
