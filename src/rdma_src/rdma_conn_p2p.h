@@ -20,8 +20,8 @@ private:
     unidirection_rdma_conn send_rdma_conn;
     exchange_qp_data send_direction_qp;
     status_recv_buf  send_peer_buf_status;
-    ctl_flow_info    ctl_flow;
-    struct ibv_mr    *ctl_flow_mr;
+    //ctl_flow_info    *ctl_flow;
+    //struct ibv_mr    *ctl_flow_mr;
 
     unidirection_rdma_conn recv_rdma_conn;
     exchange_qp_data recv_direction_qp;

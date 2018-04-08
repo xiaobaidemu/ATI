@@ -33,4 +33,4 @@
 #define ITRACE(__format, ...)    //__LOGGER_OUTPUT("ITRACE",  "34;1", __format, ##__VA_ARGS__)
 #define ITR_SEND(__format, ...)    __LOGGER_OUTPUT("ISEND",  "34;1", __format, ##__VA_ARGS__)
 #define ITR_RECV(__format, ...)    __LOGGER_OUTPUT("IRECV",  "36;1", __format, ##__VA_ARGS__)
-#define ITR_POLL(__format, ...)    //__LOGGER_OUTPUT("POLL",  "30;1", __format, ##__VA_ARGS__)
+#define ITR_POLL(__format, ...)    __LOGGER_OUTPUT("POLL",  "30;1", __format, ##__VA_ARGS__)

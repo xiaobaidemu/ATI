@@ -8,7 +8,7 @@
 #define PEER_PORT_BASE      (8801)
 #define SMALL_DATA_LEN      (256)
 #define BIG_DATA_LEN        (1024*1024*4)
-#define ITERS               (10)
+#define ITERS               (100)
 
 /*
  * test case:
@@ -31,15 +31,21 @@ int main()
     }
     srand(0xdeadbeef);
     size_t total_size = 0;
+    int big_send_cnt = 0, small_send_cnt = 0;
     for (int i = 0;i < ITERS;++i){
         random_array[i] = rand()%2;
-        if(random_array[i])
+        if(random_array[i]){
             total_size += BIG_DATA_LEN;
-        else
+            big_send_cnt++;
+        }
+        else{
             total_size += SMALL_DATA_LEN;
+            small_send_cnt++;
+        }
     }
+    SUCC("send big_data_len %d times, send small_data_len %d times.\n", big_send_cnt, small_send_cnt);
     for(int i = 0;i < threads_num;i++){
-        processes[i] = std::thread([i](){
+        processes[i] = std::thread([i, total_size](){
             WARN("%s:%d ready to init with %s:%d.\n", LOCAL_HOST, LOCAL_PORT+i,
                  PEER_HOST, PEER_PORT_BASE + (i+1)%2);
             conn_system sys("127.0.0.1", LOCAL_PORT+i);
@@ -51,8 +57,8 @@ int main()
             timer _timer;
             non_block_handle isend_req, irecv_req;
             char* send_data, *recv_data;size_t data_size;
-            for(int iter = 0; iter < ITERS;i++){
-                if(random_array[i]){
+            for(int iter = 0; iter < ITERS; iter++){
+                if(random_array[iter]){
                     send_data = dummy_big_data;
                     recv_data = recv_big_buf;
                     data_size = BIG_DATA_LEN;
@@ -63,16 +69,17 @@ int main()
                     data_size = SMALL_DATA_LEN;
                 }
                 rdma_conn_object->isend(send_data, data_size, &isend_req);
+                //WARN("%d.\n", data_size);
                 rdma_conn_object->irecv(recv_data, data_size, &irecv_req);
                 rdma_conn_object->wait(&isend_req);
                 rdma_conn_object->wait(&irecv_req);
-                ASSERT(memcpy(send_data, recv_data,data_size) == 0);
+                ASSERT(memcmp(send_data, recv_data,data_size) == 0);
 
             }
             double time_consume = _timer.elapsed();
-            total_size = total_size*2/1024/1024;
-            double speed = (double)total_size/time_consume;
-            SUCC("time %.2lfs, total_size %lldMB, speed %.2lf MB/sec\n", time_consume, total_size, speed);
+            size_t _total_size = total_size*2;
+            double speed = (double)_total_size/1024/1024/time_consume;
+            SUCC("time %.2lfs, total_size %lldMB, speed %.2lf MB/sec\n", time_consume, (long long)_total_size, speed);
         });
     }
     for(auto& t: processes)

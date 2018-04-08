@@ -2,14 +2,14 @@
 #include "rdma_resource.h"
 #include "errno.h"
 
-#define RX_DEPTH 500
-#define MAX_INLINE_LEN 128
-#define MAX_SGE_LEN    1
-#define MAX_SMALLMSG_SIZE      (1024)
+#define RX_DEPTH               (1024)
+#define MAX_INLINE_LEN         (128)
+#define MAX_SGE_LEN            (1)
+#define MAX_SMALLMSG_SIZE      (1025)
 #define MAX_POST_RECV_NUM      (1024)
 #define RECVD_BUF_SIZE    (1024*1024*4)
 #define THREHOLD_RECVD_BUFSIZE (1024*256)
-#define IMM_DATA_MAX_MASK    (0x10000000)
+#define IMM_DATA_MAX_MASK    (0x80000000)
 #define IMM_DATA_SMALL_MASK  (0x7fffffff)
 rdma_conn_p2p::rdma_conn_p2p() {
     used_recv_num = 0;
@@ -64,10 +64,9 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
     memset(&init_attr, 0, sizeof(init_attr));
     init_attr.send_cq = rdma_conn_info.cq;
     init_attr.recv_cq = rdma_conn_info.cq;
-    init_attr.cap.max_send_wr  = rdma_conn_info.rx_depth;
-    init_attr.cap.max_recv_wr  = rdma_conn_info.rx_depth;
+    init_attr.cap.max_send_wr  = rdma_conn_info.rx_depth+1;
+    init_attr.cap.max_recv_wr  = rdma_conn_info.rx_depth+1;
     init_attr.cap.max_send_sge = MAX_SGE_LEN;
-    init_attr.cap.max_recv_wr  = MAX_SGE_LEN;
     init_attr.cap.max_inline_data = MAX_INLINE_LEN;
     init_attr.qp_type = IBV_QPT_RC;
     init_attr.sq_sig_all = 0;
@@ -108,12 +107,14 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
 
         //ibv_post_recv
         post_array = new send_req_clt_info[MAX_POST_RECV_NUM];
-        post_array_mr  = ibv_reg_mr(rdma_conn_info.pd, post_array,
+        /*post_array_mr  = ibv_reg_mr(rdma_conn_info.pd, post_array,
                                                    sizeof(send_req_clt_info) * MAX_POST_RECV_NUM,
                                                    IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
+        */
         for(int i = 0;i < MAX_POST_RECV_NUM;i++){
-            CCALL(pp_post_recv(rdma_conn_info.qp, (uintptr_t)(post_array+i), post_array_mr->lkey,
-                          sizeof(send_req_clt_info), post_array_mr+i));
+            struct ibv_mr *tmp_mr =  ibv_reg_mr(rdma_conn_info.pd, &(post_array[i]), sizeof(send_req_clt_info), IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
+            CCALL(pp_post_recv(rdma_conn_info.qp, (uintptr_t)(&post_array[i]), tmp_mr->lkey,
+                          sizeof(send_req_clt_info), tmp_mr));
         }
         modify_qp_to_rtr(rdma_conn_info.qp, recv_direction_qp.qpn, recv_direction_qp.lid, rdma_conn_info.ib_port);
         modify_qp_to_rts(rdma_conn_info.qp);
@@ -121,9 +122,10 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
     }
     else{
         //ibv_post_recv
-        ctl_flow_mr = ibv_reg_mr(rdma_conn_info.pd, &ctl_flow, sizeof(ctl_flow),
-                                 IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
-        pp_post_recv(rdma_conn_info.qp, (uintptr_t)&ctl_flow, ctl_flow_mr->lkey, sizeof(ctl_flow), ctl_flow_mr);
+        ctl_flow_info *ctl_flow = new ctl_flow_info();ASSERT(ctl_flow);
+        struct ibv_mr *ctl_flow_mr = ibv_reg_mr(rdma_conn_info.pd, ctl_flow, sizeof(ctl_flow_info),
+                                 IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+        pp_post_recv(rdma_conn_info.qp, (uintptr_t)ctl_flow, ctl_flow_mr->lkey, sizeof(ctl_flow_info), ctl_flow_mr);
         SUCC("Finish Half create the send qp ~~~~~~~.\n");
     }
 
@@ -133,7 +135,7 @@ void rdma_conn_p2p::modify_qp_to_rtr(struct ibv_qp *qp, uint32_t remote_qpn, uin
     struct ibv_qp_attr attr;
     memset(&attr, 0, sizeof(attr));
     attr.qp_state = IBV_QPS_RTR;
-    attr.path_mtu = IBV_MTU_1024;
+    attr.path_mtu = IBV_MTU_4096;
     attr.dest_qp_num = remote_qpn;
     attr.rq_psn   = 0;
     attr.max_dest_rd_atomic = 1;
@@ -155,8 +157,8 @@ void rdma_conn_p2p::modify_qp_to_rts(struct ibv_qp *qp) {
     memset(&attr, 0, sizeof(attr));
     attr.qp_state = IBV_QPS_RTS;
     attr.timeout = 14;
-    attr.retry_cnt = 7;
-    attr.rnr_retry = 7;
+    attr.retry_cnt = 5;
+    attr.rnr_retry = 0;
     attr.sq_psn = 0;
     attr.max_rd_atomic = 1;
     flags = IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
@@ -205,7 +207,7 @@ int rdma_conn_p2p::pp_post_send(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t 
 int rdma_conn_p2p::pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, uint32_t rkey, uint32_t imm_data){
     struct ibv_send_wr wr, *bad_wr = nullptr;
     struct ibv_sge list;
-    memset(&list, 0, sizeof(list));
+    //memset(&list, 0, sizeof(list));
     memset(&wr, 0, sizeof(wr));
     list.addr   = mr_pair->send_addr;
     list.length = mr_pair->len;
@@ -272,10 +274,13 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
                 mr_pair->isend_index = ack_ctl_info->big.send_index;
                 uint32_t imm_data = ack_ctl_info->big.index;
                 imm_data |= IMM_DATA_MAX_MASK;
-                pp_post_write(mr_pair, imm_data, ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey);
+                //ERROR("imm_data: %d %d\n", imm_data, ack_ctl_info->big.index);
+                pp_post_write(mr_pair, ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, imm_data);
+                ITR_POLL("sending real big msg: recv_buffer %llx, rkey %x, len %d\n", (long long)ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, mr_pair->len);
             }
         }
         else if(op == IBV_WC_RDMA_WRITE){
+            //ERROR("xxxxxxx\n");
             //means small msg or big msg have sent
             addr_mr_pair *mr_pair = (addr_mr_pair*)(wc->wr_id);
             int isend_index = mr_pair->isend_index;
@@ -298,7 +303,7 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
-        enum RECV_TYPE  type;
+        enum RECV_TYPE type;
         int index = -1;
         if(op == IBV_WC_RECV_RDMA_WITH_IMM){
             uint32_t imm_data = ntohl(wc->imm_data);
@@ -325,13 +330,16 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
         used_recv_num++;
         if(type == BIG_WRITE_IMM){
             irecv_info *big_msg_ptr = irecv_info_pool.get(index);
+            ASSERT(big_msg_ptr);
+            if(big_msg_ptr->recv_mr == NULL)
+                ERROR("ooooooooooooooo\n");
             CCALL(ibv_dereg_mr(big_msg_ptr->recv_mr));
             big_msg_ptr->req_handle->_lock.release();
         }
         else{
             if(irecv_queue.empty()){
                 if(type == SEND_REQ_MSG){
-                    //push the big_msg_req into pending_queue
+                    //push the big_msg_req into pending_queue 
                     struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
                     ASSERT(recv_mr);
                     send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
@@ -345,6 +353,7 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
                     pending_queue.push(pending_req);
                 } else{
                     //push the small_msg into pending_queue
+                    ITR_POLL("irecv_queue is empty, Receiving.............\n");
                     pending_send pending_req;
                     pending_req.is_big = false;
                     pending_req.small.size = index;//index means the size of the small msg
@@ -357,6 +366,7 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
                 int recv_index = irecv_queue.front();
                 irecv_queue.pop();
                 irecv_info *irecv_ptr = irecv_info_pool.get(recv_index);
+                ASSERT(irecv_ptr);
                 if(type == SEND_REQ_MSG){
                     struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
                     send_req_clt_info *send_req = (send_req_clt_info*)(recv_mr->addr);
@@ -364,18 +374,22 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
 
                     ctl_flow_info ack_ctl_info;
                     ack_ctl_info.type = 1;
+                    if(!irecv_ptr->recv_mr){
+                        irecv_ptr->recv_mr = ibv_reg_mr(recv_rdma_conn.pd, (void*)irecv_ptr->recv_addr, irecv_ptr->recv_size, IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
+                    }
                     ack_ctl_info.big.rkey = irecv_ptr->recv_mr->rkey;
                     ack_ctl_info.big.recv_buffer = irecv_ptr->recv_addr;
                     ack_ctl_info.big.send_buffer = send_req->send_addr;
                     ack_ctl_info.big.send_mr   = send_req->send_mr;
-                    ack_ctl_info.big.index     = index;//means recv index
+                    ack_ctl_info.big.index     = recv_index;//means recv index
                     ack_ctl_info.big.send_index = send_req->isend_index;
 
                     pp_post_send(recv_rdma_conn.qp, (uintptr_t)&ack_ctl_info, 0, sizeof(ack_ctl_info), true, false);
-                    ITR_POLL("(BIG_MSG_ACK sending in thread...) rkey %x, recv_addr %llx.\n",
-                             (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer);
+                    ITR_POLL("(BIG_MSG_ACK sending in thread...) rkey %x, recv_addr %llx send_addr %llx recv_index %d.\n",
+                             (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
 
                 } else{
+                    ITR_POLL("irecv_queue not empty Receiving ...... \n");
                     ASSERT(type == SMALL_WRITE_IMM);
                     ASSERT(recv_local_buf_status.pos_isend == recv_local_buf_status.pos_irecv);
                     memcpy((void*)irecv_ptr->recv_addr,
@@ -433,7 +447,7 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
     }
 
     if(isbig){
-        //before post_send ,need to post_recv on send_rdma_qp.qp
+        //before post_send ,need to post_recv on send_rdma_qp.qp, this part can be optimized
         ctl_flow_info *ack_ctl_addr = new ctl_flow_info(); ASSERT(ack_ctl_addr);
         struct ibv_mr *mr = ibv_reg_mr(send_rdma_conn.pd, ack_ctl_addr, sizeof(ctl_flow_info), IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
         pp_post_recv(send_rdma_conn.qp, (uintptr_t)ack_ctl_addr, mr->lkey, sizeof(ctl_flow_info), mr);
@@ -469,7 +483,7 @@ int rdma_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req){
     //the lock method need to be reconsidered
     req->_lock.release();
     req->_lock.acquire();
-
+    
     int index = irecv_info_pool.pop();
     irecv_info *irecv_ptr = irecv_info_pool.get(index);
     irecv_ptr->recv_addr = (uintptr_t)buf;
@@ -502,10 +516,11 @@ int rdma_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req){
             ack_ctl_info.big.send_index = one_pending.big.isend_index;
 
             pp_post_send(recv_rdma_conn.qp, (uintptr_t)&ack_ctl_info, 0, sizeof(ack_ctl_info), true, false);
-            ITR_RECV("(BIG_MSG_ACK sending...) rkey %x, recv_addr %llx.\n",
-                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer);
+            ITR_RECV("(BIG_MSG_ACK recving...) rkey %x, recv_addr %llx, send_addr %llx, recv_index %d.\n",
+                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
         }
         else{ // this is small_msg
+            WARN("irecv: pending_queue not empty.\n");
             memcpy(buf, one_pending.small.pos, one_pending.small.size);
             req->_lock.release();
             // after memcpy, check whether need to post and return used_recv_num, recv_bufsize
@@ -530,16 +545,19 @@ int rdma_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req){
 }
 
 bool rdma_conn_p2p::wait(non_block_handle* req){
-    req->_lock.acquire();
     enum WAIT_TYPE type = req->type;
     if(type == WAIT_IRECV){
+        //WARN("wait for irecv finished...\n");
+        req->_lock.acquire();
         irecv_info_pool.push(req->index);
-        SUCC("(irecv) wait finished , index %d\n", req->index);
+        //SUCC("(irecv) wait finished , index %d\n", req->index);
     }
     else{
+        //WARN("wait for isend finished...\n");
         ASSERT(type == WAIT_ISEND);
+        req->_lock.acquire();
         isend_info_pool.push(req->index);
-        SUCC("(isend) wait finished , index %d\n", req->index);
+        //SUCC("(isend) wait finished , index %d\n", req->index);
     }
     req->_lock.release();
     return true;
