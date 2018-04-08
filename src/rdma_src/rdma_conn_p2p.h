@@ -20,14 +20,13 @@ private:
     unidirection_rdma_conn send_rdma_conn;
     exchange_qp_data send_direction_qp;
     status_recv_buf  send_peer_buf_status;
-    //ctl_flow_info    *ctl_flow;
-    //struct ibv_mr    *ctl_flow_mr;
+
 
     unidirection_rdma_conn recv_rdma_conn;
     exchange_qp_data recv_direction_qp;
     status_recv_buf  recv_local_buf_status;
     send_req_clt_info *post_array; //used for recv_qp recvd req_msg and small info
-    struct ibv_mr     *post_array_mr;
+    struct ibv_mr     **post_array_mr;
 
     std::queue<pending_send> pending_queue;
     std::queue<int>          irecv_queue;
@@ -37,12 +36,14 @@ private:
     arraypool<isend_info> isend_info_pool;
 
     lock _lock;
+    lock _lock_for_peer_num;
     bool isruning;
 
     int used_recv_num;
     size_t recvd_bufsize;
     int last_used_index;
-
+    int peer_left_recv_num;
+    std::queue<unsend_element> unsend_queue;
 
     void poll_func(rdma_conn_p2p* conn);
 
@@ -51,6 +52,7 @@ private:
     void modify_qp_to_rtr(struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, int ib_port);
     void modify_qp_to_rts(struct ibv_qp *qp);
     void clean_used_fd();
+    void reload_post_recv();
 
     int  pp_post_recv(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t lkey, uint32_t len, struct ibv_mr *mr);
     int  pp_post_send(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t lkey, uint32_t len, bool isinline, bool is_singal);

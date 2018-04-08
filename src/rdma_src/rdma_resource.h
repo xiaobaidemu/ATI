@@ -154,6 +154,33 @@ struct isend_info{
     non_block_handle *req_handle;
 };
 
+struct unsend_element{
+    bool is_real_msg;
+    union{
+        struct {
+            addr_mr_pair *mr_pair;
+            uint64_t remote_addr;
+            uint32_t rkey;
+            uint32_t imm_data;
+        }real_msg_info;
+        struct {
+            send_req_clt_info req_msg;
+        }req_msg_info;
+    };
+public:
+    unsend_element(){}
+    unsend_element(send_req_clt_info info){
+        is_real_msg = false;
+        req_msg_info.req_msg = info;
+    }
+    unsend_element(addr_mr_pair *mr_pair, uint64_t remote_addr, uint32_t rkey, uint32_t imm_data){
+        is_real_msg = true;
+        real_msg_info.mr_pair = mr_pair;
+        real_msg_info.remote_addr = remote_addr;
+        real_msg_info.rkey = rkey;
+        real_msg_info.imm_data = imm_data;
+    }
+};
 
 
 
@@ -168,5 +195,6 @@ typedef struct send_req_clt_info      send_req_clt_info;
 typedef struct non_block_handle       non_block_handle;
 typedef struct addr_mr_pair           addr_mr_pair;
 typedef struct irecv_info             irecv_info;
+typedef struct unsend_element         unsend_element;
 //typedef struct send_ack_clt_info      send_ack_clt_info;
 #endif //SENDRECV_RDMA_RESOURCE_H
