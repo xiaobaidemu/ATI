@@ -6,8 +6,8 @@
 #define PEER_HOST           ("127.0.0.1")
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
-#define DATA_LEN            (1024*16)
-#define ITERS               (512)
+#define DATA_LEN            (1024*1024*8)
+#define ITERS               (10000)
 
 /*
  * test case:
@@ -38,7 +38,9 @@ int main()
                 rdma_conn_object->isend(dummy_data, DATA_LEN, &isend_req);
                 rdma_conn_object->irecv(recv_buf, DATA_LEN, &irecv_req);
                 rdma_conn_object->wait(&isend_req);
+                SUCC("finish wait %d isend_req.\n", iter);
                 rdma_conn_object->wait(&irecv_req);
+                SUCC("finish wait %d irecv_req.\n", iter);
                 //ASSERT(memcmp(dummy_data, recv_buf, DATA_LEN) == 0);
             }
             double time_consume = _timer.elapsed();
