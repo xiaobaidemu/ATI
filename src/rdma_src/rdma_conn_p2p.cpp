@@ -1,13 +1,14 @@
 #include "rdma_conn_p2p.h"
 #include "rdma_resource.h"
 #include "errno.h"
+#include <sys/sysinfo.h>
 
 #define RX_DEPTH               (1024)
 #define MAX_INLINE_LEN         (128)
 #define MAX_SGE_LEN            (1)
-#define MAX_SMALLMSG_SIZE      (2048)
+#define MAX_SMALLMSG_SIZE      (1025)
 #define MAX_POST_RECV_NUM      (1024)
-#define RECVD_BUF_SIZE         (1024*356)
+#define RECVD_BUF_SIZE         (1024*1024*4)
 #define THREHOLD_RECVD_BUFSIZE (1024*256)
 #define IMM_DATA_MAX_MASK      (0x80000000)
 #define IMM_DATA_SMALL_MASK    (0x7fffffff)
@@ -227,6 +228,12 @@ int rdma_conn_p2p::pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, ui
 }
 
 void rdma_conn_p2p::poll_func(rdma_conn_p2p* conn){
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    for (int ii = 0; ii < 14; ++ii)
+        CPU_SET(ii,&mask), CPU_SET(ii + 28,&mask);
+    CCALL(sched_setaffinity(0, sizeof(mask), &mask));
+
     struct ibv_wc wc[RX_DEPTH+1];
     int n; bool ret;
     while(isruning){
