@@ -38,7 +38,7 @@ conn_system::conn_system(const char *ip, int port) {
     };
     bool success = lis->start_accept();
     ASSERT(success);
-    usleep(100);
+    //usleep(100);
 }
 
 rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
@@ -65,7 +65,6 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
 
     socket_connection *send_conn = env.create_connection(peer_ip, peer_port);
     set_active_connection_callback(send_conn, key);
-    conn_object->send_socket_conn = send_conn;
     send_conn->async_connect();
     IDEBUG("Ready to establish with %s\n", key.c_str());
 
@@ -108,9 +107,10 @@ void conn_system::run_poll_thread(rdma_conn_p2p* conn_object){
 }
 void conn_system::set_active_connection_callback(connection *send_conn, std::string key) {
     send_conn->OnConnect = [key, this](connection* conn) {
-        conn->start_receive();
-        rdma_conn_p2p * key_object;
+        rdma_conn_p2p *key_object = nullptr;
         ASSERT(connecting_map.Get(key, &key_object));
+        key_object->send_socket_conn = (socket_connection*)conn;
+        conn->start_receive();
         //you need create a new qp
         key_object->create_qp_info(key_object->send_rdma_conn, false);
 
@@ -136,6 +136,8 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         newconn->OnClose = conn->OnClose;
         newconn->OnSend = conn->OnSend;
         newconn->OnSendError = conn->OnSendError;
+        newconn->OnReceive   = conn->OnReceive;
+        usleep(50000);
         ASSERT(newconn->async_connect());
         IDEBUG("try to connect %s again.\n", key.c_str());
     };

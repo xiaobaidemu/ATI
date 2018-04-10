@@ -279,9 +279,9 @@ void socket_connection::do_receive()
             // NOTE: We don't call OnHup here.
             // As EPOLLRDHUP will be reported to epoll, leave OnHup there. 
 
-            //if (OnHup) {
-            //    OnHup(this, 0);
-            //}
+            if (OnHup) {
+                OnHup(this, 0);
+            }
             break;
         }
         else {
