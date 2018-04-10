@@ -61,7 +61,12 @@ private:
     bool do_send_completion(int n, struct ibv_wc *wc);
     bool do_recv_completion(int n, struct ibv_wc *wc);
 
+    /*for test real transfer_time*/
+    double total_write_consume = 0.0;
+    timer _tmp_start;
 
+    double small_write_consume = 0.0;
+    timer _small_start;
 
 public:
     rdma_conn_p2p(const rdma_conn_p2p&) = delete;
@@ -72,6 +77,13 @@ public:
     int isend(const void *buf, size_t count, non_block_handle *req);
     int irecv(void *buf, size_t count, non_block_handle *req);
     bool wait(non_block_handle* req);
+
+    double get_write_time(){
+        return total_write_consume;
+    }
+    double get_small_time(){
+        return small_write_consume;
+    }
     //bool isend();
     //bool irecv();
 };

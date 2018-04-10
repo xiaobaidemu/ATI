@@ -6,7 +6,7 @@
 #define RX_DEPTH               (1024)
 #define MAX_INLINE_LEN         (128)
 #define MAX_SGE_LEN            (1)
-#define MAX_SMALLMSG_SIZE      (1025)
+#define MAX_SMALLMSG_SIZE      (4097)
 #define MAX_POST_RECV_NUM      (1024)
 #define RECVD_BUF_SIZE         (1024*1024*4)
 #define THREHOLD_RECVD_BUFSIZE (1024*256)
@@ -330,6 +330,7 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
                 else{
                     peer_left_recv_num--;
                     _lock_for_peer_num.release();
+                    _tmp_start.reset();
                     pp_post_write(mr_pair, ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, imm_data);
                     ITR_POLL("sending real big msg: recv_buffer %llx, rkey %x, len %d\n",
                              (long long)ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, mr_pair->len);
@@ -339,7 +340,8 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
             }
         }
         else if(op == IBV_WC_RDMA_WRITE){
-            //ERROR("xxxxxxx\n");
+            total_write_consume += _tmp_start.elapsed();
+            small_write_consume += _small_start.elapsed();
             //means small msg or big msg have sent
             addr_mr_pair *mr_pair = (addr_mr_pair*)(wc->wr_id);
             int isend_index = mr_pair->isend_index;
@@ -546,6 +548,7 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         peer_left_recv_num--;
         _lock_for_peer_num.release();
 
+        _small_start.reset();
         pp_post_write(mr_pair, send_peer_buf_status.buf_info.addr + pos_s,
                       send_peer_buf_status.buf_info.rkey, imm_data);
         send_peer_buf_status.pos_isend = (pos_s + count) % n;
