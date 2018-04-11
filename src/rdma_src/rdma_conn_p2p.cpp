@@ -17,7 +17,9 @@ rdma_conn_p2p::rdma_conn_p2p() {
     used_recv_num = 0;
     recvd_bufsize = 0;
     last_used_index = 0;
-    isruning      = true;
+    //isruning      = true;
+    issend_running  = true;
+    isrecv_running  = true;
     send_event_fd = CCALL(eventfd(0, EFD_CLOEXEC));
     recv_event_fd = CCALL(eventfd(0, EFD_CLOEXEC));
 }
@@ -233,7 +235,42 @@ int rdma_conn_p2p::pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, ui
     return ibv_post_send(send_rdma_conn.qp, &wr, &bad_wr);
 }
 
-void rdma_conn_p2p::poll_func(rdma_conn_p2p* conn){
+
+void rdma_conn_p2p::poll_send_func(rdma_conn_p2p *conn) {
+    struct ibv_wc wc[RX_DEPTH+1];
+    int n; bool ret;
+    while(issend_running){
+        n = ibv_poll_cq(send_rdma_conn.cq, RX_DEPTH+1, wc);
+        if(n < 0){
+            ERROR("some error when poll send_rdma_conn.cq.\n");
+            return;
+        }
+        if(n > 0){
+            //ITR_SPECIAL("ibv_poll_cq send_num:%d.\n", n);
+            ret = do_send_completion(n, wc);
+            ASSERT(ret);
+        }
+    }
+}
+
+void rdma_conn_p2p::poll_recv_func(rdma_conn_p2p *conn) {
+    struct ibv_wc wc[RX_DEPTH+1];
+    int n; bool ret;
+    while(isrecv_running){
+        n = ibv_poll_cq(recv_rdma_conn.cq, RX_DEPTH+1, wc);
+        if(n < 0){
+            ERROR("some error when poll recv_rdma_conn.cq.\n");
+            return;
+        }
+        if(n > 0){
+            //ITR_SPECIAL("ibv_poll_cq recv_num:%d.\n", n);
+            ret = do_recv_completion(n, wc);
+            ASSERT(ret);
+        }
+    }
+}
+
+/*void rdma_conn_p2p::poll_func(rdma_conn_p2p* conn){
     cpu_set_t mask;
     CPU_ZERO(&mask);
     for (int ii = 0; ii < 14; ++ii)
@@ -266,6 +303,7 @@ void rdma_conn_p2p::poll_func(rdma_conn_p2p* conn){
         }
     }
 }
+*/
 
 bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
     for(int i = 0;i < n;i++){

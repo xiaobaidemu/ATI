@@ -30,14 +30,18 @@ private:
 
     std::queue<pending_send> pending_queue;
     std::queue<int>          irecv_queue;
-    std::thread *poll_thread;
+    //std::thread *poll_thread;
+    std::thread *poll_send_thread;
+    std::thread *poll_recv_thread;
     pool<addr_mr_pair>  addr_mr_pool;
     arraypool<irecv_info> irecv_info_pool;
     arraypool<isend_info> isend_info_pool;
 
     lock _lock;
     lock _lock_for_peer_num;
-    bool isruning;
+    //bool isruning;
+    bool issend_running;
+    bool isrecv_running;
 
     int used_recv_num;
     size_t recvd_bufsize;
@@ -45,7 +49,9 @@ private:
     int peer_left_recv_num;
     std::queue<unsend_element> unsend_queue;
 
-    void poll_func(rdma_conn_p2p* conn);
+    //void poll_func(rdma_conn_p2p* conn);
+    void poll_send_func(rdma_conn_p2p *conn);
+    void poll_recv_func(rdma_conn_p2p *conn);
 
     void nofity_system(int event_fd);
     void create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool isrecvqp);

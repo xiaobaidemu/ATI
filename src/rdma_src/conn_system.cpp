@@ -5,8 +5,10 @@ conn_system::~conn_system() {
     WARN("Transfer System is ready to close.\n");
     env.dispose();
     connecting_map.Foreach([](std::string key, rdma_conn_p2p * conn){
-        conn->isruning = false;
-        conn->poll_thread->join();
+        conn->issend_running = false;
+        conn->isrecv_running = false;
+        conn->poll_send_thread->join();
+        conn->poll_recv_thread->join();
     });
 }
 
@@ -103,7 +105,9 @@ rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
 }
 
 void conn_system::run_poll_thread(rdma_conn_p2p* conn_object){
-    conn_object->poll_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_func, conn_object, conn_object));
+    //conn_object->poll_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_func, conn_object, conn_object));
+    conn_object->poll_send_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_send_func, conn_object, conn_object));
+    conn_object->poll_recv_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_recv_func, conn_object, conn_object));
 }
 void conn_system::set_active_connection_callback(connection *send_conn, std::string key) {
     send_conn->OnConnect = [key, this](connection* conn) {
