@@ -6,8 +6,8 @@
 #define PEER_HOST           ("127.0.0.1")
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
-#define DATA_LEN            (1024*1024*4)
-#define ITERS               (2000)
+#define DATA_LEN            (512*1024)
+#define ITERS               (10000)
 
 /*
  * test case:
@@ -53,12 +53,22 @@ int main()
             else
                 rdma_conn_object->wait(irecv_req_array + ITERS -1);
             //if(i == 1) 
-                //ASSERT(memcmp(dummy_data, recv_buf[ITERS -1], 0) == 0);
+              //  ASSERT(memcmp(dummy_data, recv_buf[ITERS -1], 0) == 0);
 
             double time_consume = _timer.elapsed();
             size_t total_size = (long long)DATA_LEN*ITERS;
             double speed = (double)total_size/1024/1024/time_consume;
             SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
+            
+            double real_write_time;
+            if(DATA_LEN >= 8192)
+                real_write_time = rdma_conn_object->get_write_time();
+            else
+                real_write_time = rdma_conn_object->get_small_time();
+            size_t write_size = DATA_LEN * ITERS;
+            double real_speed = (double)write_size/1024/1024/real_write_time;
+            if(i == 0)ITR_SPECIAL("real_ib_time %.6lfsec, total_size %lld bytes, real_speed %.2lf MB/sec\n",
+                        real_write_time,write_size, real_speed);
         });
     }
     for(auto& t: processes)
