@@ -8,7 +8,7 @@
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
 //#define DATA_LEN            (4*1024)
-#define ITERS               1000
+#define ITERS               2000
 
 /*
  * test case:
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
             timer _timer;
             non_block_handle isend_req_1, isend_req_2,irecv_req_1, irecv_req_2;
             for(int iter = 0; iter < ITERS; iter++){
-                rdma_conn_object->isend(dummy_data_1, DATA_LEN, &isend_req_2);
+                rdma_conn_object->isend(dummy_data_1, DATA_LEN, &isend_req_1);
                 rdma_conn_object->isend(dummy_data_2, DATA_LEN, &isend_req_2);
                 rdma_conn_object->irecv(recv_buf_1, DATA_LEN, &irecv_req_1);
                 rdma_conn_object->irecv(recv_buf_2, DATA_LEN, &irecv_req_2);

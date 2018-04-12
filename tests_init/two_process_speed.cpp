@@ -7,7 +7,7 @@
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
 #define DATA_LEN            (512*1024)
-#define ITERS               (10000)
+#define ITERS               (1000)
 
 /*
  * test case:
@@ -43,9 +43,11 @@ int main()
             for(int iter = 0; iter < ITERS; iter++){
                 if(i == 0){
                     rdma_conn_object->isend(dummy_data, DATA_LEN, isend_req_array + iter);
+                    WARN("[rank %d] isend %d times.\n", i, iter);
                 }
                 else{
                     rdma_conn_object->irecv(recv_buf[iter], DATA_LEN, irecv_req_array + iter);
+                    //SUCC("[rank %d] irecv %d times.\n", i, iter);
                 }
             }
             if(i == 0)

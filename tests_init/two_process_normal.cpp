@@ -8,7 +8,7 @@
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
 //#define DATA_LEN            (4*1024)
-#define ITERS               2000
+#define ITERS               2400
 
 /*
  * test case:
