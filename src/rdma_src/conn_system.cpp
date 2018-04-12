@@ -141,7 +141,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         newconn->OnSend = conn->OnSend;
         newconn->OnSendError = conn->OnSendError;
         newconn->OnReceive   = conn->OnReceive;
-        usleep(50000);
+        usleep(10);
         ASSERT(newconn->async_connect());
         IDEBUG("try to connect %s again.\n", key.c_str());
     };
