@@ -66,6 +66,8 @@ private:
     int  pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, uint32_t rkey, uint32_t imm_data);
     bool do_send_completion(int n, struct ibv_wc *wc);
     bool do_recv_completion(int n, struct ibv_wc *wc);
+    void pending_queue_not_empty(void *buf, size_t count, int index, non_block_handle *req);
+    void irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_wc *wc, int index);
 
     /*for test real transfer_time*/
     double total_write_consume = 0.0;

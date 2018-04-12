@@ -352,7 +352,7 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
                             ITR_SEND("(BIG_MSG_REQ sending from unsend_queue): send_addr %llx, len %d, isend_index %d\n",(long long)element.req_msg_info.req_msg.send_addr,
                                      (int)element.req_msg_info.req_msg.len, element.req_msg_info.req_msg.isend_index);
                         }
-                        WARN("xxx peer_left_recv_num :%d size of unsend_queue:%d.\n", peer_left_recv_num, unsend_queue.size());
+                        //WARN("xxx peer_left_recv_num :%d size of unsend_queue:%d.\n", peer_left_recv_num, unsend_queue.size());
                     }
                     else break;
                 }
@@ -404,6 +404,47 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
     return true;
 }
 
+void rdma_conn_p2p::irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_wc *wc, int index){
+    int recv_index = irecv_queue.front();
+    irecv_queue.pop();
+    irecv_info *irecv_ptr = irecv_info_pool.get(recv_index);
+    ASSERT(irecv_ptr);
+    if(type == SEND_REQ_MSG){
+        struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
+        send_req_clt_info *send_req = (send_req_clt_info*)(recv_mr->addr);
+        ASSERT(recv_mr);
+
+        ctl_flow_info ack_ctl_info;
+        ack_ctl_info.type = 1;
+        if(!irecv_ptr->recv_mr){
+            irecv_ptr->recv_mr = ibv_reg_mr(recv_rdma_conn.pd, (void*)irecv_ptr->recv_addr, irecv_ptr->recv_size, IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
+        }
+        ASSERT(irecv_ptr->recv_mr);
+        ack_ctl_info.big.rkey = irecv_ptr->recv_mr->rkey;
+        ack_ctl_info.big.recv_buffer = irecv_ptr->recv_addr;
+        ack_ctl_info.big.send_buffer = send_req->send_addr;
+        ack_ctl_info.big.send_mr   = send_req->send_mr;
+        ack_ctl_info.big.index     = recv_index;//means recv index
+        ack_ctl_info.big.send_index = send_req->isend_index;
+
+        CCALL(pp_post_send(recv_rdma_conn.qp, (uintptr_t)&ack_ctl_info, 0, sizeof(ack_ctl_info), true, false));
+        ITR_POLL("(BIG_MSG_ACK sending in thread...) rkey %x, recv_addr %llx send_addr %llx recv_index %d.\n",
+                 (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
+
+    } else{
+        ITR_POLL("irecv_queue not empty Receiving ...... \n");
+        ASSERT(type == SMALL_WRITE_IMM);
+        ASSERT(recv_local_buf_status.pos_isend == recv_local_buf_status.pos_irecv);
+        memcpy((void*)irecv_ptr->recv_addr,
+               (char*)recv_local_buf_status.buf_info.addr + recv_local_buf_status.pos_isend, index);
+        irecv_ptr->req_handle->_lock.release();
+        recvd_bufsize += index;
+        recv_local_buf_status.pos_isend = (recv_local_buf_status.pos_isend + index) % recv_local_buf_status.buf_info.size;
+        recv_local_buf_status.pos_irecv = (recv_local_buf_status.pos_irecv + index) % recv_local_buf_status.buf_info.size;
+    }
+    return;
+}
+
 bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
     for(int i = 0;i < n;i++){
         struct ibv_wc *wc = wc_recv+i;
@@ -438,6 +479,7 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
         //the _lock need to be reconsidered
         _lock.acquire();
         used_recv_num++;
+        _lock.release();
         if(type == BIG_WRITE_IMM){
             irecv_info *big_msg_ptr = irecv_info_pool.get(index);
             ASSERT(big_msg_ptr);
@@ -448,68 +490,47 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
         }
         else{
             if(irecv_queue.empty()){
-                if(type == SEND_REQ_MSG){
-                    //push the big_msg_req into pending_queue 
-                    struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
-                    ASSERT(recv_mr);
-                    send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
-                    pending_send pending_req;
-                    pending_req.is_big = true;
-                    ASSERT(recvd_req->send_addr);ASSERT(recvd_req->send_mr);
-                    pending_req.big.big_addr = recvd_req->send_addr;
-                    pending_req.big.big_mr   = recvd_req->send_mr;
-                    pending_req.big.size     = recvd_req->len;
-                    pending_req.big.isend_index = recvd_req->isend_index;
-                    pending_queue.push(pending_req);
-                } else{
-                    //push the small_msg into pending_queue
-                    ITR_POLL("irecv_queue is empty, Receiving.............\n");
-                    pending_send pending_req;
-                    pending_req.is_big = false;
-                    pending_req.small.size = index;//index means the size of the small msg
-                    pending_req.small.pos  = (char*)recv_local_buf_status.buf_info.addr + recv_local_buf_status.pos_isend;
-                    recv_local_buf_status.pos_isend = (recv_local_buf_status.pos_isend + index) % recv_local_buf_status.buf_info.size;
-                    pending_queue.push(pending_req);
+                //double check
+                _lock.acquire();
+                if(irecv_queue.empty()){
+                    if(type == SEND_REQ_MSG){
+                        //push the big_msg_req into pending_queue
+                        struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
+                        ASSERT(recv_mr);
+                        send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
+                        pending_send pending_req;
+                        pending_req.is_big = true;
+                        ASSERT(recvd_req->send_addr);ASSERT(recvd_req->send_mr);
+                        pending_req.big.big_addr = recvd_req->send_addr;
+                        pending_req.big.big_mr   = recvd_req->send_mr;
+                        pending_req.big.size     = recvd_req->len;
+                        pending_req.big.isend_index = recvd_req->isend_index;
+                        pending_queue.push(pending_req);
+                    } else{
+                        //push the small_msg into pending_queue
+                        ITR_POLL("irecv_queue is empty, Receiving.............\n");
+                        pending_send pending_req;
+                        pending_req.is_big = false;
+                        pending_req.small.size = index;//index means the size of the small msg
+                        pending_req.small.pos  = (char*)recv_local_buf_status.buf_info.addr + recv_local_buf_status.pos_isend;
+                        recv_local_buf_status.pos_isend = (recv_local_buf_status.pos_isend + index) % recv_local_buf_status.buf_info.size;
+                        pending_queue.push(pending_req);
+                    }
                 }
+                else{
+                    _lock.release();
+                    irecv_queue_not_empty(type, wc, index);
+                    if(recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || used_recv_num >= MAX_POST_RECV_NUM){
+                        ITR_SPECIAL("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
+                                    used_recv_num, (long long)recvd_bufsize);
+                        reload_post_recv();
+                    }
+                    return 1;
+                }
+                _lock.release();
             }
             else{//irecv_queue is not empty
-                int recv_index = irecv_queue.front();
-                irecv_queue.pop();
-                irecv_info *irecv_ptr = irecv_info_pool.get(recv_index);
-                ASSERT(irecv_ptr);
-                if(type == SEND_REQ_MSG){
-                    struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
-                    send_req_clt_info *send_req = (send_req_clt_info*)(recv_mr->addr);
-                    ASSERT(recv_mr);
-
-                    ctl_flow_info ack_ctl_info;
-                    ack_ctl_info.type = 1;
-                    if(!irecv_ptr->recv_mr){
-                        irecv_ptr->recv_mr = ibv_reg_mr(recv_rdma_conn.pd, (void*)irecv_ptr->recv_addr, irecv_ptr->recv_size, IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
-                    }
-                    ASSERT(irecv_ptr->recv_mr);
-                    ack_ctl_info.big.rkey = irecv_ptr->recv_mr->rkey;
-                    ack_ctl_info.big.recv_buffer = irecv_ptr->recv_addr;
-                    ack_ctl_info.big.send_buffer = send_req->send_addr;
-                    ack_ctl_info.big.send_mr   = send_req->send_mr;
-                    ack_ctl_info.big.index     = recv_index;//means recv index
-                    ack_ctl_info.big.send_index = send_req->isend_index;
-
-                    CCALL(pp_post_send(recv_rdma_conn.qp, (uintptr_t)&ack_ctl_info, 0, sizeof(ack_ctl_info), true, false));
-                    ITR_POLL("(BIG_MSG_ACK sending in thread...) rkey %x, recv_addr %llx send_addr %llx recv_index %d.\n",
-                             (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
-
-                } else{
-                    ITR_POLL("irecv_queue not empty Receiving ...... \n");
-                    ASSERT(type == SMALL_WRITE_IMM);
-                    ASSERT(recv_local_buf_status.pos_isend == recv_local_buf_status.pos_irecv);
-                    memcpy((void*)irecv_ptr->recv_addr,
-                           (char*)recv_local_buf_status.buf_info.addr + recv_local_buf_status.pos_isend, index);
-                    irecv_ptr->req_handle->_lock.release();
-                    recvd_bufsize += index;
-                    recv_local_buf_status.pos_isend = (recv_local_buf_status.pos_isend + index) % recv_local_buf_status.buf_info.size;
-                    recv_local_buf_status.pos_irecv = (recv_local_buf_status.pos_irecv + index) % recv_local_buf_status.buf_info.size;
-                }
+                irecv_queue_not_empty(type, wc, index);
             }
         }
         if(recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || used_recv_num >= MAX_POST_RECV_NUM){
@@ -517,7 +538,7 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
                         used_recv_num, (long long)recvd_bufsize);
             reload_post_recv();
         }
-        _lock.release();
+        //_lock.release();
     }
     return true;
 }
@@ -608,9 +629,51 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
     }
     return 1;
 }
+
+
+void rdma_conn_p2p::pending_queue_not_empty(void *buf, size_t count, int index, non_block_handle *req){
+    pending_send one_pending = pending_queue.front();
+    pending_queue.pop();
+    if(one_pending.is_big){//this is big_msg_req
+        //register the buf and ready to post_send buf
+        struct ibv_mr *recv_mr = ibv_reg_mr(recv_rdma_conn.pd, buf, count,
+                                            IBV_ACCESS_LOCAL_WRITE |IBV_ACCESS_REMOTE_WRITE);
+        irecv_info *irecv_ptr = irecv_info_pool.get(index);
+        irecv_ptr->recv_mr = recv_mr;
+        ctl_flow_info ack_ctl_info;
+        ack_ctl_info.type = 1;
+        ack_ctl_info.big.rkey = recv_mr->rkey;
+        ack_ctl_info.big.recv_buffer = (uintptr_t)buf;
+        ack_ctl_info.big.send_buffer = one_pending.big.big_addr;
+        ack_ctl_info.big.send_mr   = one_pending.big.big_mr;
+        ack_ctl_info.big.index     = index;
+        ack_ctl_info.big.send_index = one_pending.big.isend_index;
+
+        CCALL(pp_post_send(recv_rdma_conn.qp, (uintptr_t)&ack_ctl_info, 0, sizeof(ack_ctl_info), true, false));
+        ITR_RECV("(BIG_MSG_ACK recving...) rkey %x, recv_addr %llx, send_addr %llx, recv_index %d.\n",
+                 (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
+    }
+    else{ // this is small_msg
+        WARN("irecv: pending_queue not empty.\n");
+        memcpy(buf, one_pending.small.pos, one_pending.small.size);
+        req->_lock.release();
+        // after memcpy, check whether need to post and return used_recv_num, recv_bufsize
+        recvd_bufsize += one_pending.small.size;
+        recv_local_buf_status.pos_irecv = (recv_local_buf_status.pos_irecv + one_pending.small.size)
+                                          % recv_local_buf_status.buf_info.size;
+        if(recvd_bufsize >= THREHOLD_RECVD_BUFSIZE){
+            ITR_SPECIAL("### (in irecv)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
+                        used_recv_num, (long long)recvd_bufsize);
+            _lock.acquire();
+            reload_post_recv();
+            _lock.release();
+        }
+    }
+    return;
+}
 int rdma_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req){
     //the lock method need to be reconsidered
-    _lock.acquire();
+    //_lock.acquire();
     req->_lock.release();
     req->_lock.acquire();
     
@@ -624,46 +687,23 @@ int rdma_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req){
     req->type  = WAIT_IRECV;
 
     if(pending_queue.empty()){
-        //create a index for current irecv
-        irecv_queue.push(index);
+        _lock.acquire();
+        if(pending_queue.empty()){
+            //create a index for current irecv
+            irecv_queue.push(index);
+        }
+        else {
+            _lock.release();
+            pending_queue_not_empty(buf, count, index, req);
+            return 1;
+        }
+        _lock.release();
+        return 1;
     }
     else{//pending_queue is not empty
-        pending_send one_pending = pending_queue.front();
-        pending_queue.pop();
-        if(one_pending.is_big){//this is big_msg_req
-            //register the buf and ready to post_send buf
-            struct ibv_mr *recv_mr = ibv_reg_mr(recv_rdma_conn.pd, buf, count,
-                                                IBV_ACCESS_LOCAL_WRITE |IBV_ACCESS_REMOTE_WRITE);
-            irecv_ptr->recv_mr = recv_mr;
-            ctl_flow_info ack_ctl_info;
-            ack_ctl_info.type = 1;
-            ack_ctl_info.big.rkey = recv_mr->rkey;
-            ack_ctl_info.big.recv_buffer = (uintptr_t)buf;
-            ack_ctl_info.big.send_buffer = one_pending.big.big_addr;
-            ack_ctl_info.big.send_mr   = one_pending.big.big_mr;
-            ack_ctl_info.big.index     = index;
-            ack_ctl_info.big.send_index = one_pending.big.isend_index;
-
-            CCALL(pp_post_send(recv_rdma_conn.qp, (uintptr_t)&ack_ctl_info, 0, sizeof(ack_ctl_info), true, false));
-            ITR_RECV("(BIG_MSG_ACK recving...) rkey %x, recv_addr %llx, send_addr %llx, recv_index %d.\n",
-                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
-        }
-        else{ // this is small_msg
-            WARN("irecv: pending_queue not empty.\n");
-            memcpy(buf, one_pending.small.pos, one_pending.small.size);
-            req->_lock.release();
-            // after memcpy, check whether need to post and return used_recv_num, recv_bufsize
-            recvd_bufsize += one_pending.small.size;
-            recv_local_buf_status.pos_irecv = (recv_local_buf_status.pos_irecv + one_pending.small.size)
-                                              % recv_local_buf_status.buf_info.size;
-            if(recvd_bufsize >= THREHOLD_RECVD_BUFSIZE){
-                ITR_SPECIAL("### (in irecv)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
-                            used_recv_num, (long long)recvd_bufsize);
-                reload_post_recv();
-            }
-        }
+        pending_queue_not_empty(buf, count, index, req);
     }
-    _lock.release();
+    //_lock.release();
     return 1;
 }
 
