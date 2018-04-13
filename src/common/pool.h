@@ -143,10 +143,8 @@ private:
     uint32_t head;
 public:
     arraypool(const arraypool&) = delete;
-    arraypool(arraypool&&) = delete;
-    arraypool(){
-        head = 0xffffffff;
-    };
+    arraypool(arraypool&&) = delete; 
+    arraypool() = delete;
 
     T* get(uint32_t index){
         return &array[index];
@@ -160,6 +158,9 @@ public:
         *((uint32_t*)(&array[size-1])) = 0xffffffff;
         head  = 0;
     }
+    /*arraypool(){
+        head = 0xffffffff;
+    };*/
 
     uint32_t pop(){
         if(head == 0xffffffff){

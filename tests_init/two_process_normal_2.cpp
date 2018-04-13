@@ -8,7 +8,7 @@
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
 //#define DATA_LEN            (4*1024)
-#define ITERS               2000
+#define ITERS               1000
 
 /*
  * test case:
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
                 //ASSERT(memcmp(dummy_data, recv_buf, DATA_LEN) == 0);
             }
             double time_consume = _timer.elapsed();
-            size_t total_size = DATA_LEN*2*ITERS;
+            size_t total_size = DATA_LEN*4*ITERS;
             double speed = (double)total_size/1024/1024/time_consume;
 
             double real_write_time;

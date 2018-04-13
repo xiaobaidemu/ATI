@@ -6,23 +6,43 @@
 #define PEER_HOST           ("127.0.0.1")
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
-#define DATA_LEN            (512*1024)
-#define ITERS               (1000)
+//#define DATA_LEN            (512*1024)
+#define ITERS               (100)
 
 /*
  * test case:
  * 1.isend one small msg: 16, 32, 64, 128, 512
  * 2.isend one big   msg: 1024, 1024*16, 1024*256, 1024*1024, 1024*1024*8
  */
-static char dummy_data[DATA_LEN];
+static char *dummy_data;
 
-int main()
+int main(int argc, char *argv[])
 {
+    if(argc < 3){
+        ERROR("two few parameter.\n");
+        exit(0);
+    }
+    size_t size = (size_t)atol(argv[1]);
+    char   unit = argv[2][0];
+    size_t DATA_LEN;
+    switch(unit){
+        case 'b':
+            DATA_LEN = size;
+            break;
+        case 'k':
+            DATA_LEN = size * 1024;
+            break;
+        case 'm':
+            DATA_LEN = size * 1024 * 1024;
+            break;
+    }
+    dummy_data = (char*)malloc(DATA_LEN);
+    ITR_SPECIAL("~~~~ size %d, unit %c, DATA_LEN %lld~~~~\n", (int)size, unit, (long long)DATA_LEN);
     int threads_num = 2;
     std::vector<std::thread> processes(threads_num);
     
     for(int i = 0;i < threads_num;i++){
-        processes[i] = std::thread([i](){
+        processes[i] = std::thread([i, DATA_LEN](){
             WARN("%s:%d ready to init with %s:%d.\n", LOCAL_HOST, LOCAL_PORT+i,
                  PEER_HOST, PEER_PORT_BASE + (i+1)%2);
             conn_system sys("127.0.0.1", LOCAL_PORT+i);
@@ -70,7 +90,7 @@ int main()
             size_t write_size = DATA_LEN * ITERS;
             double real_speed = (double)write_size/1024/1024/real_write_time;
             if(i == 0)ITR_SPECIAL("real_ib_time %.6lfsec, total_size %lld bytes, real_speed %.2lf MB/sec\n",
-                        real_write_time,write_size, real_speed);
+                        real_write_time, (long long)write_size, real_speed);
         });
     }
     for(auto& t: processes)
