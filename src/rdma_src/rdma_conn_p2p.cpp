@@ -642,6 +642,7 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         ASSERT(mr_pair);
         mr_pair->send_addr = (uintptr_t)const_cast<void*>(buf);
         mr_pair->send_mr   = ibv_reg_mr(send_rdma_conn.pd, const_cast<void*>(buf), count, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+        isend_ptr->send_mr = mr_pair->send_mr;
         ASSERT((uintptr_t)mr_pair->send_mr->addr == (uintptr_t)mr_pair->send_addr);
         mr_pair->len       = count;
         mr_pair->isend_index = isend_index;
@@ -792,16 +793,17 @@ void rdma_conn_p2p::reload_post_recv(){
 bool rdma_conn_p2p::wait(non_block_handle* req){
     enum WAIT_TYPE type = req->type;
     if(type == WAIT_IRECV){
-        //WARN("wait for irecv finished...\n");
+        WARN("wait for irecv finished...\n");
         req->_lock.acquire();
         irecv_info *my_recv_info = irecv_info_pool.get(req->index);
-        CCALL(ibv_dereg_mr(my_recv_info->recv_mr));
+        if(my_recv_info->recv_mr)
+            CCALL(ibv_dereg_mr(my_recv_info->recv_mr));
         memset(my_recv_info, 0, sizeof(irecv_info));
         irecv_info_pool.push(req->index);
-        //SUCC("(irecv) wait finished , index %d\n", req->index);
+        SUCC("(irecv) wait finished , index %d\n", req->index);
     }
     else if(type == WAIT_ISEND){
-        //WARN("wait for isend finished...\n");
+        WARN("wait for isend finished...\n");
         ASSERT(type == WAIT_ISEND);
         req->_lock.acquire();
         isend_info *my_send_info = isend_info_pool.get(req->index);
@@ -809,7 +811,7 @@ bool rdma_conn_p2p::wait(non_block_handle* req){
         CCALL(ibv_dereg_mr(my_send_info->send_mr));
         memset(my_send_info, 0, sizeof(irecv_info));
         isend_info_pool.push(req->index);
-        //SUCC("(isend) wait finished , index %d\n", req->index);
+        SUCC("(isend) wait finished , index %d\n", req->index);
     }
     else {
         req->_lock.acquire();
