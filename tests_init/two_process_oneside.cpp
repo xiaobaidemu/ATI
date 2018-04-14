@@ -54,29 +54,33 @@ int main(int argc, char *argv[])
             if(i == 0){
                 rdma_conn_object->oneside_send_pre(dummy_data, DATA_LEN, &oneside_send_pre_req, &send_info);
                 rdma_conn_object->wait(&oneside_send_pre_req);
-                SUCC("[Finished SEND oneside exchange info] recv_buffer %lld, rkey %d\n",
+                SUCC("[Finished SEND oneside exchange info] recv_buffer %llx, rkey %d\n",
                      (long long)send_info.recv_buffer, (int)send_info.rkey);
             }
             else{
                 rdma_conn_object->oneside_recv_pre(recv_buf, DATA_LEN, &oneside_recv_req, &recv_info);
                 rdma_conn_object->wait(&oneside_recv_req);
-                SUCC("[Finished RECV oneside exchange info] recv_buffer %lld, rkey %d\n]",
+                SUCC("[Finished RECV oneside exchange info] recv_buffer %llx, rkey %d]\n",
                      (long long)recv_info.recv_buffer, (int)recv_info.rkey);
             }
             timer _timer;
             non_block_handle iwrite_req;
             for(int iter = 0; iter < ITERS; iter++){
                 if(i == 0){
+                    ITR_SPECIAL("oneside_isend begin %d time.\n", iter);
                     rdma_conn_object->oneside_isend(&send_info, &iwrite_req);
                     rdma_conn_object->wait(&iwrite_req);
-                    ITR_SPECIAL("oneside_isend %d time.\n", iter);
+                    //if(iter == ITERS-1)
+                    ITR_SPECIAL("oneside_isend end %d time.\n", iter);
                 }
                 else{
                     rdma_conn_object->wait_oneside_recv(&recv_info);
-                    SUCC("oneside_wait_recv %d time.\n", iter);
+                    //if(iter == ITERS-1)
+                        SUCC("oneside_wait_recv %d time.\n", iter);
                 }
-                if(i == 1)
+                /*if(i == 1)
                     ASSERT(memcmp(dummy_data, recv_buf, DATA_LEN) == 0);
+                    */
             }
             double time_consume = _timer.elapsed();
             size_t total_size = DATA_LEN*ITERS;

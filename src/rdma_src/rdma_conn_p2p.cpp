@@ -409,6 +409,7 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
             //means small msg or big msg have sent
             addr_mr_pair *mr_pair = (addr_mr_pair*)(wc->wr_id);
             int isend_index = mr_pair->isend_index;
+            //WARN("========= isend_index %d\n", isend_index);
             memset(mr_pair, 0, sizeof(addr_mr_pair));
             addr_mr_pool.push(mr_pair);
             isend_info_pool.get(isend_index)->req_handle->_lock.release();
@@ -577,7 +578,6 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
 }
 
 int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
-    //ERROR("~~~~~~~~~~~start isend ~~~~~~~~~~~~\n");
     req->_lock.release();
     req->_lock.acquire();
 
@@ -622,6 +622,7 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         req_msg.send_mr    = ibv_reg_mr(send_rdma_conn.pd, const_cast<void*>(buf), count, IBV_ACCESS_LOCAL_WRITE);
         req_msg.isend_index = isend_index;
         req_msg.is_oneside  = false;
+        isend_ptr->send_mr  = req_msg.send_mr;
 
         _lock_for_peer_num.acquire();
         if(peer_left_recv_num <= 0){
@@ -793,17 +794,17 @@ void rdma_conn_p2p::reload_post_recv(){
 bool rdma_conn_p2p::wait(non_block_handle* req){
     enum WAIT_TYPE type = req->type;
     if(type == WAIT_IRECV){
-        WARN("wait for irecv finished...\n");
+        //WARN("wait for irecv finished...\n");
         req->_lock.acquire();
         irecv_info *my_recv_info = irecv_info_pool.get(req->index);
         if(my_recv_info->recv_mr)
             CCALL(ibv_dereg_mr(my_recv_info->recv_mr));
         memset(my_recv_info, 0, sizeof(irecv_info));
         irecv_info_pool.push(req->index);
-        SUCC("(irecv) wait finished , index %d\n", req->index);
+        //SUCC("(irecv) wait finished , index %d\n", req->index);
     }
     else if(type == WAIT_ISEND){
-        WARN("wait for isend finished...\n");
+        //WARN("wait for isend finished...\n");
         ASSERT(type == WAIT_ISEND);
         req->_lock.acquire();
         isend_info *my_send_info = isend_info_pool.get(req->index);
@@ -811,10 +812,11 @@ bool rdma_conn_p2p::wait(non_block_handle* req){
         CCALL(ibv_dereg_mr(my_send_info->send_mr));
         memset(my_send_info, 0, sizeof(irecv_info));
         isend_info_pool.push(req->index);
-        SUCC("(isend) wait finished , index %d\n", req->index);
+        //SUCC("(isend) wait finished , index %d\n", req->index);
     }
     else {
         req->_lock.acquire();
+        return true;
     }
     req->_lock.release();
     return true;
@@ -850,6 +852,7 @@ int rdma_conn_p2p::oneside_send_pre(const void *buf, size_t count, non_block_han
     req_msg.len = count;
     req_msg.send_addr  = (uintptr_t)const_cast<void*>(buf);
     req_msg.send_mr    = ibv_reg_mr(send_rdma_conn.pd, const_cast<void*>(buf), count, IBV_ACCESS_LOCAL_WRITE);
+    isend_ptr->send_mr = req_msg.send_mr;
     req_msg.isend_index = isend_index;
     req_msg.is_oneside  = true;
 
@@ -911,12 +914,15 @@ int rdma_conn_p2p::oneside_isend(oneside_info *peer_info, non_block_handle *req)
     req->oneside_info_addr = (uintptr_t)peer_info;
     req->type = WAIT_ONESIDE_SEND;
     req->index = peer_info->write_index;
+    //change the lock 
+    isend_info * my_iwrite_info = isend_info_pool.get(peer_info->write_index);
+    my_iwrite_info->req_handle = req;
 
     addr_mr_pair *mr_pair = addr_mr_pool.pop();
     ASSERT(mr_pair);
     mr_pair->send_addr = peer_info->send_buffer;
-    mr_pair->send_mr   = ibv_reg_mr(send_rdma_conn.pd, (void*)peer_info->send_buffer, peer_info->send_mr->length,
-                                    IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+    mr_pair->send_mr   = peer_info->send_mr;
+    ASSERT(mr_pair->send_mr);
     mr_pair->len       = peer_info->send_mr->length;
     mr_pair->isend_index = peer_info->write_index;
     uint32_t imm_data = peer_info->read_index;
@@ -932,15 +938,16 @@ int rdma_conn_p2p::oneside_isend(oneside_info *peer_info, non_block_handle *req)
     _lock_for_peer_num.release();
 
     CCALL(pp_post_write(mr_pair, peer_info->recv_buffer, peer_info->rkey, imm_data));
-    ITR_SEND("[ONESIDE_MSG sending...] send_addr %llx, len %d, isend_index %d\n", (long long unsigned int)mr_pair->send_addr, mr_pair->len, mr_pair->isend_index);
+    ITR_SEND("[ONESIDE_MSG sending...] send_addr %llx, len %d, iwrite_index %d, iread_index %d, rkey %d, recv_buffer %llx\n", (long long unsigned int)mr_pair->send_addr, mr_pair->len, mr_pair->isend_index, peer_info->read_index, (int)peer_info->rkey, (long long)peer_info->recv_buffer);
     return 1;
 }
 
 bool rdma_conn_p2p::wait_oneside_recv(oneside_info *peer_info){
     ASSERT(peer_info->req);
     non_block_handle *req = peer_info->req;
+    //ERROR("********** req_addr %llx\n", (long long)peer_info->req);
     req->_lock.acquire();
-    req->_lock.release();
+    //req->_lock.release();
     return true;
 }
 
