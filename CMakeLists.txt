@@ -29,6 +29,7 @@ set(SOURCE_FILES
 
 add_executable(two_process_normal ${SOURCE_FILES} tests_init/two_process_normal.cpp)
 add_executable(two_process_normal_2 ${SOURCE_FILES} tests_init/two_process_normal_2.cpp)
+add_executable(two_process_oneside ${SOURCE_FILES} tests_init/two_process_oneside.cpp)
 add_executable(init_n_process ${SOURCE_FILES} tests_init/init_n_process.cpp)
 add_executable(two_process_large ${SOURCE_FILES} tests_init/two_process_large.cpp)
 add_executable(two_process_mix ${SOURCE_FILES} tests_init/two_process_mix.cpp)

@@ -34,6 +34,7 @@ private:
     std::thread *poll_send_thread;
     std::thread *poll_recv_thread;
     pool<addr_mr_pair>  addr_mr_pool;
+    pool<ctl_flow_info> ctl_flow_pool;
     arraypool<irecv_info> irecv_info_pool;
     arraypool<isend_info> isend_info_pool;
 
@@ -86,14 +87,19 @@ public:
     int irecv(void *buf, size_t count, non_block_handle *req);
     bool wait(non_block_handle* req);
 
+    int oneside_send_pre(const void *buf, size_t count, non_block_handle *req, oneside_info *peer_info);
+    int oneside_recv_pre(void *buf, size_t count, non_block_handle *req, oneside_info* my_info);
+    bool end_oneside(oneside_info *peer_info);
+
+    int oneside_isend(oneside_info *peer_info, non_block_handle *req);
+    bool wait_oneside_recv(oneside_info *peer_info);
+
     double get_write_time(){
         return total_write_consume;
     }
     double get_small_time(){
         return small_write_consume;
     }
-    //bool isend();
-    //bool irecv();
 };
 
 
