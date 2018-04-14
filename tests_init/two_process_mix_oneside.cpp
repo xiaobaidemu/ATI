@@ -15,7 +15,6 @@
 //mix oneside communication with normal isend- irecv
 
 //isendrecv -- oneside - isendrecv oneside oneside oneside
-static char *dummy_data;
 static int random_array[ITERS];
 static int multiple_array[ITERS];
 static bool direction[ITERS];
@@ -24,7 +23,7 @@ static bool direction[ITERS];
 int main(int argc, char *argv[])
 {
     int small = 0, big = 0, one_side = 0;
-    srand(0xdeadbeef);
+    srand(0xeaddbeaf);
     size_t total_size = 0;
     int big_send_cnt = 0, small_send_cnt = 0;
     for (int i = 0;i < ITERS;++i){
@@ -45,7 +44,6 @@ int main(int argc, char *argv[])
         //true: i==0 send ;i ==1 recv   false:i==0 recv;i ==1 send
     }
     SUCC("small %d, big %d, one_side %d.\n", small, big, one_side);
-
     int threads_num = 2;
     std::vector<std::thread> processes(threads_num);
     for(int i = 0;i < threads_num;i++){
@@ -67,7 +65,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->isend(send_buffer, data_len, &small_isend_req);
                             rdma_conn_object->wait(&small_isend_req);
                             free(send_buffer);
-                            RANK_0("[iter %d] finished ISEND small_data %lld.", iter, (long long)data_len);
+                            RANK_0("[iter %d] finished ISEND small_data %lld.\n", iter, (long long)data_len);
                         }
                         else{
                             recv_buffer = (char*)malloc(data_len);
@@ -75,7 +73,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->irecv(recv_buffer, data_len, &small_irecv_req);
                             rdma_conn_object->wait(&small_irecv_req);
                             free(recv_buffer);
-                            RANK_0("[iter %d] finished IRECV small_data %lld.", iter, (long long)data_len);
+                            RANK_0("[iter %d] finished IRECV small_data %lld.\n", iter, (long long)data_len);
                         }
                     }
                     else{
@@ -85,7 +83,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->irecv(recv_buffer, data_len, &small_irecv_req);
                             rdma_conn_object->wait(&small_irecv_req);
                             free(recv_buffer);
-                            RANK_1("[iter %d] finished IRECV small_data %lld.", iter, (long long)data_len);
+                            RANK_1("[iter %d] finished IRECV small_data %lld.\n", iter, (long long)data_len);
                         }
                         else{
                             send_buffer = (char*)malloc(data_len);
@@ -93,7 +91,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->isend(send_buffer, data_len, &small_isend_req);
                             rdma_conn_object->wait(&small_isend_req);
                             free(send_buffer);
-                            RANK_1("[iter %d] finished ISEND small_data %lld.", iter, (long long)data_len);
+                            RANK_1("[iter %d] finished ISEND small_data %lld.\n", iter, (long long)data_len);
                         }
                     }
                 }
@@ -106,7 +104,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->isend(send_buffer, data_len, &big_isend_req);
                             rdma_conn_object->wait(&big_isend_req);
                             free(send_buffer);
-                            RANK_0("[iter %d] finished ISEND big_data %lld.", iter, (long long)data_len);
+                            RANK_0("[iter %d] finished ISEND big_data %lld.\n", iter, (long long)data_len);
                         }
                         else{
                             recv_buffer = (char*)malloc(data_len);
@@ -114,7 +112,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->irecv(recv_buffer, data_len, &big_irecv_req);
                             rdma_conn_object->wait(&big_irecv_req);
                             free(recv_buffer);
-                            RANK_0("[iter %d] finished IRECV big_data %lld.", iter, (long long)data_len);
+                            RANK_0("[iter %d] finished IRECV big_data %lld.\n", iter, (long long)data_len);
                         }
                     }
                     else{
@@ -125,7 +123,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->irecv(recv_buffer, data_len, &big_irecv_req);
                             rdma_conn_object->wait(&big_irecv_req);
                             free(recv_buffer);
-                            RANK_1("[iter %d] finished IRECV big_data %lld.", iter, (long long)data_len);
+                            RANK_1("[iter %d] finished IRECV big_data %lld.\n", iter, (long long)data_len);
                         }
                         else{
                             send_buffer = (char*)malloc(data_len);
@@ -133,7 +131,7 @@ int main(int argc, char *argv[])
                             rdma_conn_object->isend(send_buffer, data_len, &big_isend_req);
                             rdma_conn_object->wait(&big_isend_req);
                             free(send_buffer);
-                            RANK_1("[iter %d] finished ISEND big_data %lld.", iter, (long long)data_len);
+                            RANK_1("[iter %d] finished ISEND big_data %lld.\n", iter, (long long)data_len);
                         }
                     }
                 }
@@ -145,12 +143,12 @@ int main(int argc, char *argv[])
                             send_buffer = (char*)malloc(data_len);
                             non_block_handle oneside_send_pre_req, iwrite_req;
                             oneside_info send_info;
-                            rdma_conn_object->oneside_send_pre(dummy_data, data_len, &oneside_send_pre_req, &send_info);
+                            rdma_conn_object->oneside_send_pre(send_buffer, data_len, &oneside_send_pre_req, &send_info);
                             rdma_conn_object->wait(&oneside_send_pre_req);
                             rdma_conn_object->oneside_isend(&send_info, &iwrite_req);
                             rdma_conn_object->wait(&iwrite_req);
                             free(send_buffer);
-                            RANK_0("[iter %d] finished ONE_SIDE_WRITE %lld.", iter, (long long)data_len);
+                            RANK_0("[iter %d] finished ONE_SIDE_WRITE %lld.\n", iter, (long long)data_len);
 
                         }
                         else{
@@ -159,7 +157,7 @@ int main(int argc, char *argv[])
                             oneside_info recv_info;
                             rdma_conn_object->oneside_recv_pre(recv_buffer, data_len, &oneside_recv_req, &recv_info);
                             rdma_conn_object->wait(&oneside_recv_req);
-                            RANK_0("[iter %d] finishing ONE_SIDE_READ %lld.", iter, (long long)data_len);
+                            RANK_0("[iter %d] finishing ONE_SIDE_READ %lld.\n", iter, (long long)data_len);
                         }
                     }
                     else{
@@ -169,23 +167,24 @@ int main(int argc, char *argv[])
                             oneside_info recv_info;
                             rdma_conn_object->oneside_recv_pre(recv_buffer, data_len, &oneside_recv_req, &recv_info);
                             rdma_conn_object->wait(&oneside_recv_req);
-                            RANK_1("[iter %d] finishing ONE_SIDE_READ %lld.", iter, (long long)data_len);
+                            RANK_1("[iter %d] finishing ONE_SIDE_READ %lld.\n", iter, (long long)data_len);
                         }
                         else{
                             send_buffer = (char*)malloc(data_len);
                             non_block_handle oneside_send_pre_req, iwrite_req;
                             oneside_info send_info;
-                            rdma_conn_object->oneside_send_pre(dummy_data, data_len, &oneside_send_pre_req, &send_info);
+                            rdma_conn_object->oneside_send_pre(send_buffer, data_len, &oneside_send_pre_req, &send_info);
                             rdma_conn_object->wait(&oneside_send_pre_req);
                             rdma_conn_object->oneside_isend(&send_info, &iwrite_req);
                             rdma_conn_object->wait(&iwrite_req);
                             free(send_buffer);
-                            RANK_1("[iter %d] finished ONE_SIDE_WRITE %lld.", iter, (long long)data_len);
+                            RANK_1("[iter %d] finished ONE_SIDE_WRITE %lld.\n", iter, (long long)data_len);
                         }
 
                     }
                 }
             }
+            sleep(5);
         });
     }
     for(auto& t: processes)

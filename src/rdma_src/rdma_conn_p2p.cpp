@@ -340,6 +340,10 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
                                                 ack_ctl_info->big.send_buffer, ack_ctl_info->big.send_mr,
                                                 ack_ctl_info->big.index, ack_ctl_info->big.send_index, ONE_SIDE_SEND);
                     isend_ptr->req_handle->_lock.release();
+                    memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
+                    ctl_flow_pool.push(ack_ctl_info);
+                    continue;
+                    
                 }
                 addr_mr_pair *mr_pair = addr_mr_pool.pop();//remember to recycle
                 ASSERT(mr_pair);

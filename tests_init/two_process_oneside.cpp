@@ -11,7 +11,7 @@
 #define ITERS               1000
 
 static char *dummy_data;
-
+static lock ctl_lock;
 int main(int argc, char *argv[])
 {
     if(argc < 3){
@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
     for (size_t i = 0; i < DATA_LEN; ++i) {
         dummy_data[i] = (char)(unsigned char)i;
     }
+    ctl_lock.acquire();
     for(int i = 0;i < threads_num;i++){
         processes[i] = std::thread([i, DATA_LEN](){
             WARN("%s:%d ready to init with %s:%d.\n", LOCAL_HOST, LOCAL_PORT+i,
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
             else{
                 rdma_conn_object->oneside_recv_pre(recv_buf, DATA_LEN, &oneside_recv_req, &recv_info);
                 rdma_conn_object->wait(&oneside_recv_req);
-                SUCC("[Finished RECV oneside exchange info] recv_buffer %llx, rkey %d]\n",
+                SUCC("[Finished RECV oneside exchange info] recv_buffer %llx, rkey %d\n",
                      (long long)recv_info.recv_buffer, (int)recv_info.rkey);
             }
             timer _timer;
@@ -81,6 +82,10 @@ int main(int argc, char *argv[])
                 SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume,
                      (long long)total_size, speed);
             }
+            if(i == 0)
+                ctl_lock.release();
+            else
+                ctl_lock.acquire();
             if(i == 0)rdma_conn_object->end_oneside(&send_info);
             else rdma_conn_object->end_oneside(&recv_info);
         });
