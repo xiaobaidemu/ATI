@@ -273,41 +273,6 @@ void rdma_conn_p2p::poll_recv_func(rdma_conn_p2p *conn) {
     }
 }
 
-/*void rdma_conn_p2p::poll_func(rdma_conn_p2p* conn){
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    for (int ii = 0; ii < 14; ++ii)
-        CPU_SET(ii,&mask), CPU_SET(ii + 28,&mask);
-    //CCALL(sched_setaffinity(0, sizeof(mask), &mask));
-
-    struct ibv_wc wc[RX_DEPTH+1];
-    int n; bool ret;
-    while(isruning){
-        n = ibv_poll_cq(send_rdma_conn.cq, RX_DEPTH+1, wc);
-        if(n < 0){
-            ERROR("some error when poll send_rdma_conn.cq.\n");
-            return;
-        }
-        if(n > 0){
-            //ITR_SPECIAL("ibv_poll_cq send_num:%d.\n", n);
-            ret = do_send_completion(n, wc);
-            ASSERT(ret);
-        }
-
-        n = ibv_poll_cq(recv_rdma_conn.cq, RX_DEPTH+1, wc);
-        if(n < 0){
-            ERROR("some error when poll recv_rdma_conn.cq.\n");
-            return;
-        }
-        if(n > 0){
-            //ITR_SPECIAL("ibv_poll_cq recv_num:%d.\n", n);
-            ret = do_recv_completion(n, wc);
-            ASSERT(ret);
-        }
-    }
-}
-*/
-
 bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
     for(int i = 0;i < n;i++){
         struct ibv_wc *wc = wc_send + i;
@@ -940,15 +905,6 @@ int rdma_conn_p2p::oneside_isend(oneside_info *peer_info, non_block_handle *req)
     CCALL(pp_post_write(mr_pair, peer_info->recv_buffer, peer_info->rkey, imm_data));
     ITR_SEND("[ONESIDE_MSG sending...] send_addr %llx, len %d, iwrite_index %d, iread_index %d, rkey %d, recv_buffer %llx\n", (long long unsigned int)mr_pair->send_addr, mr_pair->len, mr_pair->isend_index, peer_info->read_index, (int)peer_info->rkey, (long long)peer_info->recv_buffer);
     return 1;
-}
-
-bool rdma_conn_p2p::wait_oneside_recv(oneside_info *peer_info){
-    ASSERT(peer_info->req);
-    non_block_handle *req = peer_info->req;
-    //ERROR("********** req_addr %llx\n", (long long)peer_info->req);
-    req->_lock.acquire();
-    //req->_lock.release();
-    return true;
 }
 
 //clear the resource(ibv_dereg_mr)

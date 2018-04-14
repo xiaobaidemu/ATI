@@ -70,13 +70,6 @@ private:
     void pending_queue_not_empty(void *buf, size_t count, int index, non_block_handle *req);
     void irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_wc *wc, int index);
 
-    /*for test real transfer_time*/
-    double total_write_consume = 0.0;
-    timer _tmp_start;
-
-    double small_write_consume = 0.0;
-    timer _small_start;
-
 public:
     rdma_conn_p2p(const rdma_conn_p2p&) = delete;
     rdma_conn_p2p(rdma_conn_p2p && ) = delete;
@@ -92,14 +85,6 @@ public:
     bool end_oneside(oneside_info *peer_info);
 
     int oneside_isend(oneside_info *peer_info, non_block_handle *req);
-    bool wait_oneside_recv(oneside_info *peer_info);
-
-    double get_write_time(){
-        return total_write_consume;
-    }
-    double get_small_time(){
-        return small_write_consume;
-    }
 };
 
 

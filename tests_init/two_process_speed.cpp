@@ -81,16 +81,6 @@ int main(int argc, char *argv[])
             size_t total_size = (long long)DATA_LEN*ITERS;
             double speed = (double)total_size/1024/1024/time_consume;
             SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
-            
-            double real_write_time;
-            if(DATA_LEN >= 8192)
-                real_write_time = rdma_conn_object->get_write_time();
-            else
-                real_write_time = rdma_conn_object->get_small_time();
-            size_t write_size = DATA_LEN * ITERS;
-            double real_speed = (double)write_size/1024/1024/real_write_time;
-            if(i == 0)ITR_SPECIAL("real_ib_time %.6lfsec, total_size %lld bytes, real_speed %.2lf MB/sec\n",
-                        real_write_time, (long long)write_size, real_speed);
         });
     }
     for(auto& t: processes)

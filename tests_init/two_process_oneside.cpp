@@ -67,26 +67,20 @@ int main(int argc, char *argv[])
             non_block_handle iwrite_req;
             for(int iter = 0; iter < ITERS; iter++){
                 if(i == 0){
-                    ITR_SPECIAL("oneside_isend begin %d time.\n", iter);
+                    //ITR_SPECIAL("oneside_isend begin %d time.\n", iter);
                     rdma_conn_object->oneside_isend(&send_info, &iwrite_req);
                     rdma_conn_object->wait(&iwrite_req);
-                    //if(iter == ITERS-1)
-                    ITR_SPECIAL("oneside_isend end %d time.\n", iter);
+                    //ITR_SPECIAL("oneside_isend end %d time.\n", iter);
                 }
-                else{
-                    rdma_conn_object->wait_oneside_recv(&recv_info);
-                    //if(iter == ITERS-1)
-                        SUCC("oneside_wait_recv %d time.\n", iter);
-                }
-                /*if(i == 1)
-                    ASSERT(memcmp(dummy_data, recv_buf, DATA_LEN) == 0);
-                    */
             }
-            double time_consume = _timer.elapsed();
-            size_t total_size = DATA_LEN*ITERS;
-            double speed = (double)total_size/1024/1024/time_consume;
-
-            SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
+            if(i == 0)
+            {
+                double time_consume = _timer.elapsed();
+                size_t total_size = DATA_LEN*ITERS;
+                double speed = (double)total_size/1024/1024/time_consume;
+                SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume,
+                     (long long)total_size, speed);
+            }
             if(i == 0)rdma_conn_object->end_oneside(&send_info);
             else rdma_conn_object->end_oneside(&recv_info);
         });
