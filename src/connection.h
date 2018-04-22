@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rdma_src/rdma_resource.h>
+#include <tcp_src/tcp_resource.h>
 enum connection_status
 {
     CONNECTION_UNKNOWN = 0,
@@ -33,6 +34,15 @@ public:
     virtual bool start_receive() = 0;
 
     exch_state cur_recv_info;
+
+    //used for tcp_conn_system
+    pool<datahead> datahead_pool;
+    std::atomic<bool> is_sent_head;
+    data_state cur_recv_data;
+    tsqueue<data_state> recvd_data_queue;
+    tsqueue<non_block_handle*>   sending_data_queue;
+    tsqueue<non_block_handle*>   recving_data_queue;
+
 protected:
     explicit connection(environment* env);
 

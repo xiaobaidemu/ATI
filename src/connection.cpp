@@ -6,6 +6,7 @@ connection::connection(environment* env)
     : _environment(env)
 {
     ASSERT(env);
+    is_sent_head.store(true);
 }
 
 socket_connection::socket_connection(socket_environment* env, const char* remote_ip, const uint16_t port)
@@ -264,7 +265,7 @@ void socket_connection::do_send()
 
 void socket_connection::do_receive()
 {
-    const int BUFFER_SIZE = 1024 * 1024 * 16;  // 16MB, TODO: use pool
+    const int BUFFER_SIZE = 1024 * 1024;  // 16MB, TODO: use pool
     void* buffer = malloc(BUFFER_SIZE);
     ASSERT(buffer != nullptr);
 

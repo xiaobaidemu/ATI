@@ -20,7 +20,6 @@ rdma_conn_p2p::rdma_conn_p2p():irecv_info_pool(2000), isend_info_pool(2000) {
     used_recv_num = 0;
     recvd_bufsize = 0;
     last_used_index = 0;
-    //isruning      = true;
     issend_running  = true;
     isrecv_running  = true;
     send_event_fd = CCALL(eventfd(0, EFD_CLOEXEC));

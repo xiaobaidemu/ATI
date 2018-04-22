@@ -26,7 +26,7 @@ struct unidirection_rdma_conn{
 };
 
 enum head_type{
-    HEAD_TYPE_INVAILD = 0,
+    TCP_HEAD_TYPE_INVAILD = 0,
     HEAD_TYPE_EXCH,
     HEAD_TYPE_DONE,
 };
@@ -112,6 +112,12 @@ struct non_block_handle{
     int  index;//related to arraypool,array
     enum WAIT_TYPE type;
     uintptr_t oneside_info_addr;//only for oneside_send_pre
+    //only for tcp_conn_system
+    struct{
+        char   *tcp_irecv_addr;
+        size_t real_recv_size;
+    }tcp_req_info;
+
 };
 
 struct send_req_clt_info{

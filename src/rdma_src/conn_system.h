@@ -38,9 +38,6 @@ private:
     int   my_listen_port;
 
     CONN_MAP connecting_map;
-    //SUCC_CONN_MAP success_connect_map; //those have already established connect
-    //PENDING_CONN_MAP passive_connect_map;
-    //PENDING_CONN_MAP active_connect_map;
 
 public:
     conn_system(const char* my_listen_ip, int my_listen_port);
