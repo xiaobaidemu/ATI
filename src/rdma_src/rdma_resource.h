@@ -114,7 +114,7 @@ struct non_block_handle{
     uintptr_t oneside_info_addr;//only for oneside_send_pre
     //only for tcp_conn_system
     struct{
-        char   *tcp_irecv_addr;
+        void   *tcp_irecv_addr;
         size_t real_recv_size;
     }tcp_req_info;
 

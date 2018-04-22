@@ -27,19 +27,20 @@ int main(int argc, char *argv[])
             tcp_conn_p2p *tcp_conn_object = sys.init("127.0.0.1", PEER_PORT_BASE + (i+1)%2);
             ASSERT(tcp_conn_object);
             WARN("%s:%d init finished.\n", LOCAL_HOST, LOCAL_PORT+i);
-            timer _timer;
             non_block_handle isend_req, irecv_req;
             for(int iter = 0; iter < ITERS; iter++){
-                char* send_buf = (char*)malloc(multiple_array[i] * BASE_LEN);
-                char* recv_buf = (char*)malloc(multiple_array[i] * BASE_LEN);
-                for (size_t i = 0; i < multiple_array[i] * BASE_LEN; ++i) {
+                char* send_buf = (char*)malloc(multiple_array[iter] * BASE_LEN);
+                char* recv_buf = (char*)malloc(multiple_array[iter] * BASE_LEN);
+                for (size_t i = 0; i < multiple_array[iter] * BASE_LEN; ++i) {
                     send_buf[i] = (char)(unsigned char)i;
                 }
-                tcp_conn_object->isend(send_buf, multiple_array[i] * BASE_LEN, &isend_req);
-                tcp_conn_object->irecv(recv_buf,multiple_array[i] * BASE_LEN, &irecv_req);
+                tcp_conn_object->isend(send_buf, multiple_array[iter] * BASE_LEN, &isend_req);
+                tcp_conn_object->irecv(recv_buf,multiple_array[iter] * BASE_LEN, &irecv_req);
                 tcp_conn_object->wait(&isend_req);
                 tcp_conn_object->wait(&irecv_req);
-                ASSERT(memcmp(send_buf, recv_buf, multiple_array[i] * BASE_LEN) == 0);
+                ASSERT(memcmp(send_buf, recv_buf, multiple_array[iter] * BASE_LEN) == 0);
+                free(send_buf);
+                free(recv_buf);
             }
             SUCC("=========FINISH TASK=========\n");
             sleep(1);

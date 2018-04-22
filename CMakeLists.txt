@@ -29,7 +29,7 @@ set(SOURCE_FILES
 add_executable(test_tcp_normal ${SOURCE_FILES} tests_tcp/test_tcp_normal.cpp)
 add_executable(test_tcp_init_n ${SOURCE_FILES} tests_tcp/test_tcp_init_n.cpp)
 add_executable(test_tcp_speed  ${SOURCE_FILES} tests_tcp/test_tcp_speed.cpp)
-add_executable(test_tcp_trans_n  ${SOURCE_FILES} tests_tcp/test_tcp_alltoall.cpp)
+add_executable(test_tcp_alltoall  ${SOURCE_FILES} tests_tcp/test_tcp_alltoall.cpp)
 add_executable(test_tcp_normal_2  ${SOURCE_FILES} tests_tcp/test_tcp_normal_2.cpp)
 add_executable(test_tcp_mix_diff_size  ${SOURCE_FILES} tests_tcp/test_tcp_mix_diff_size.cpp)
 #add_executable(two_process_normal ${SOURCE_FILES} tests_init/two_process_normal.cpp)

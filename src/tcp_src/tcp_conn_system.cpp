@@ -1,5 +1,6 @@
 #include "tcp_conn_system.h"
 #include "tcp_resource.h"
+#define IP_LEN 16
 void tcp_conn_system::splitkey(const std::string& s, std::string& ip, int &port, const std::string& c)
 {
     std::string::size_type pos1, pos2;
@@ -10,7 +11,7 @@ void tcp_conn_system::splitkey(const std::string& s, std::string& ip, int &port,
 }
 tcp_conn_system::tcp_conn_system(const char *ip, int port)
 {
-    this->my_listen_ip = (char*)malloc(strlen(ip)+1);
+    this->my_listen_ip = (char*)malloc(IP_LEN);
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
 
@@ -72,7 +73,7 @@ void tcp_conn_system::set_active_connection_callback(connection *send_conn, std:
         head->type = HEAD_TYPE_INIT;
         head->content_size = 0;
         memcpy(head->ip, key_object->my_listen_ip, strlen(key_object->my_listen_ip)+1);
-        ASSERT(strlen(key_object->my_listen_ip) == 15);
+
         head->port = key_object->my_listen_port;
         ASSERT(conn->async_send(head, sizeof(datahead)));
         WARN("READY to send my_listen_ip (%s) and my_listen_port (%d) info to peer.\n", head->ip, head->port);
@@ -158,6 +159,7 @@ void tcp_conn_system::set_passive_connection_callback(connection *recv_conn){
     };
 
     recv_conn->OnReceive = [this](connection* conn, const void* buffer, const size_t length) {
+
         size_t left_len = length;
         char* cur_buf   = (char*) const_cast<void*>(buffer);
         //this part can be made a flow or chart
@@ -210,7 +212,7 @@ void tcp_conn_system::set_passive_connection_callback(connection *recv_conn){
                         ITRACE("%s_%dHas Recvd the HEAD_TYPE_INIT from %s\n",
                                this->my_listen_ip, this->my_listen_port, peer_key.c_str());
                         conn->cur_recv_data.clear();
-                        conn_object->_active_connected.release();
+                        conn_object->_passive_connected.release();
                     }
                     continue;
                 }
@@ -229,6 +231,7 @@ void tcp_conn_system::set_passive_connection_callback(connection *recv_conn){
                     left_len -= (tcs - rcs);
                     rcs = conn->cur_recv_data.total_content_size;
                     conn->recvd_data_queue.push(conn->cur_recv_data);
+                    ITR_RECV("[On receive] push one whole data into queue.\n");
                     conn->cur_recv_data.clear();
                     continue;
                 }

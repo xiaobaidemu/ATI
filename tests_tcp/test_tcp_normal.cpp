@@ -7,7 +7,7 @@
 #define PEER_HOST           ("127.0.0.1")
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
-#define ITERS               1000
+#define ITERS               100
 
 /*
  * test case:
@@ -59,15 +59,15 @@ int main(int argc, char *argv[])
                 tcp_conn_object->irecv(recv_buf, DATA_LEN, &irecv_req);
                 tcp_conn_object->wait(&isend_req);
                 tcp_conn_object->wait(&irecv_req);
-                ASSERT(memcmp(dummy_data, recv_buf, DATA_LEN) == 0);
+                //ASSERT(memcmp(dummy_data, recv_buf, DATA_LEN) == 0);
             }
             double time_consume = _timer.elapsed();
             size_t total_size = DATA_LEN*2*ITERS;
             double speed = (double)total_size/1024/1024/time_consume;
 
-            //SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
+            SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
 
-            sleep(1);
+            //sleep(1);
         });
     }
     for(auto& t: processes)

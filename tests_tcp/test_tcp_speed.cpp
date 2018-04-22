@@ -8,7 +8,7 @@
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
 //#define DATA_LEN            (512*1024)
-#define ITERS               (100)
+#define ITERS               (1000)
 
 /*
  * test case:
@@ -81,7 +81,8 @@ int main(int argc, char *argv[])
             double time_consume = _timer.elapsed();
             size_t total_size = (long long)DATA_LEN*ITERS;
             double speed = (double)total_size/1024/1024/time_consume;
-            //SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
+            SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
+            sleep(1);
         });
     }
     for(auto& t: processes)

@@ -27,6 +27,7 @@ int tcp_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req)
 }
 int tcp_conn_p2p::irecv(void *buf, size_t count, non_block_handle *req)
 {
+    req->tcp_req_info.tcp_irecv_addr = buf;
     req->_lock.release();
     req->_lock.acquire();
     req->type = WAIT_IRECV;
@@ -43,19 +44,25 @@ bool tcp_conn_p2p::wait(non_block_handle* req){
     }
     else if(req->type == WAIT_IRECV){
         if(req->_lock.try_acquire())
+        {
+            IDEBUG("one IRECV end.\n");
             return true;
+        }
         while(true){
             non_block_handle *tmp_req;
             bool success = recv_socket_conn->recving_data_queue.try_pop(&tmp_req);
             ASSERT(success);
             data_state tmp_recvd_data;
             while(!(recv_socket_conn->recvd_data_queue.try_pop(&tmp_recvd_data))){}
+            ASSERT(tmp_req->tcp_req_info.tcp_irecv_addr);
+            ASSERT(tmp_recvd_data.content);
             memcpy(tmp_req->tcp_req_info.tcp_irecv_addr, tmp_recvd_data.content, tmp_recvd_data.total_content_size);
             tmp_req->tcp_req_info.real_recv_size = tmp_recvd_data.total_content_size;
             tmp_req->_lock.release();
-            if(tmp_req == req)
+            if(tmp_req == req){
                 return true;
+                IDEBUG("one IRECV end ======== .\n");
+            }
         }
-
     }
 }
