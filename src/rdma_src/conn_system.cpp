@@ -1,3 +1,4 @@
+#ifdef IBEXIST
 #include "conn_system.h"
 #include <functional>
 #define IP_LEN 16
@@ -309,4 +310,5 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
 
     };
 }
+#endif
 

@@ -1,10 +1,34 @@
 #ifndef SENDRECV_RDMA_RESOURCE_H
 #define SENDRECV_RDMA_RESOURCE_H
-
-
-#include <cstdint>
-#include <infiniband/verbs.h>
 #include <common/lock.h>
+#include <cstdint>
+enum WAIT_TYPE{
+    WAIT_ISEND = 0,
+    WAIT_IRECV,
+    WAIT_ONESIDE_SEND_PRE,
+    WAIT_ONESIDE_RECV_PRE,
+    WAIT_ONESIDE_SEND,
+    WAIT_ONESIDE_RECV,
+};
+
+struct non_block_handle{
+    lock _lock;
+    int  index;//related to arraypool,array
+    enum WAIT_TYPE type;
+    uintptr_t oneside_info_addr;//only for oneside_send_pre
+    //only for tcp_conn_system
+    struct{
+        void   *tcp_irecv_addr;
+        size_t real_recv_size;
+    }tcp_req_info;
+
+};
+typedef struct non_block_handle       non_block_handle;
+
+#ifdef IBEXIST
+
+#include <infiniband/verbs.h>
+
 
 struct exchange_qp_data {
     uint16_t lid; //LID of IB port (Local IDentifier)
@@ -93,31 +117,12 @@ enum RECV_TYPE{
     SEND_REQ_MSG,
 };
 
-enum WAIT_TYPE{
-    WAIT_ISEND = 0,
-    WAIT_IRECV,
-    WAIT_ONESIDE_SEND_PRE,
-    WAIT_ONESIDE_RECV_PRE,
-    WAIT_ONESIDE_SEND,
-    WAIT_ONESIDE_RECV,
-};
+
 
 enum ONE_SIDE_TYPE{
     ONE_SIDE_NONE = 0,
     ONE_SIDE_SEND,
     ONE_SIDE_RECV,
-};
-struct non_block_handle{
-    lock _lock;
-    int  index;//related to arraypool,array
-    enum WAIT_TYPE type;
-    uintptr_t oneside_info_addr;//only for oneside_send_pre
-    //only for tcp_conn_system
-    struct{
-        void   *tcp_irecv_addr;
-        size_t real_recv_size;
-    }tcp_req_info;
-
 };
 
 struct send_req_clt_info{
@@ -243,10 +248,10 @@ typedef struct recvd_buf_size         recvd_buf_size;
 typedef struct status_recv_buf        status_recv_buf;
 typedef struct ctl_flow_info          ctl_flow_info;
 typedef struct send_req_clt_info      send_req_clt_info;
-typedef struct non_block_handle       non_block_handle;
 typedef struct addr_mr_pair           addr_mr_pair;
 typedef struct irecv_info             irecv_info;
 typedef struct unsend_element         unsend_element;
 typedef struct oneside_info           oneside_info;
 //typedef struct send_ack_clt_info      send_ack_clt_info;
 #endif //SENDRECV_RDMA_RESOURCE_H
+#endif

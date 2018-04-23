@@ -1,3 +1,4 @@
+#ifdef IBEXIST
 #include "rdma_conn_p2p.h"
 #include "rdma_resource.h"
 #include "errno.h"
@@ -927,3 +928,5 @@ bool rdma_conn_p2p::end_oneside(oneside_info *peer_info){
     }
     return true;
 }
+
+#endif

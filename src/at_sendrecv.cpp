@@ -38,6 +38,7 @@ bool comm_system::verifyrdma()
 }
 
 async_conn_system* comm_system::get_comm_system(){
+#ifdef IBEXIST
     if(verifyrdma())
         conn_sys_type = RDMA_SYSTEM;
     else
@@ -47,5 +48,8 @@ async_conn_system* comm_system::get_comm_system(){
     else{
         return new tcp_conn_system(my_ip, my_port);
     }
+#endif
+    conn_sys_type = TCP_SYSTEM;
+    return new tcp_conn_system(my_ip, my_port);
 }
 

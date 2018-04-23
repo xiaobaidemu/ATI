@@ -33,7 +33,9 @@ public:
     virtual bool async_connect() = 0;
     virtual bool start_receive() = 0;
 
+#ifdef IBEXIST
     exch_state cur_recv_info;
+#endif
 
     //used for tcp_conn_system
     pool<datahead> datahead_pool;

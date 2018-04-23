@@ -62,7 +62,9 @@ int main(int argc, char **argv){
             WARN("==========%s_%d   finish task.\n", LOCAL_HOST, LOCAL_PORT + i);
             SUCC("[%s:%d] has succeed initing with all other %d process.\n",
                  LOCAL_HOST, LOCAL_PORT + i, process_num - 1);
-            //sleep(1);
+#ifdef IBEXIST
+            WARN("++++++ the IBEXIST macro ++++++\n");
+#endif
         });
     }
     for(auto& t: processes)

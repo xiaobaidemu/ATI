@@ -4,7 +4,8 @@ project(Sendrecv CXX)
 
 # Enable C++ 11
 set(CMAKE_CXX_STANDARD 11)
-add_definitions("-Wall -g")
+add_definitions("-w")
+#add_definitions("-Wall")
 
 # Add src to include directory
 include_directories("src")
@@ -13,6 +14,15 @@ include_directories(".")
 # Link with thread library
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+
+find_library(iblib_var NAMES ibverbs rdmacm)
+if(iblib_var)
+    message("ibverbs and rdmacm library found.")
+    add_definitions(-DIBEXIST)
+else()
+    message(FATAL_ERROR "ibverbs and rdmacm library not found")
+endif()
+
 link_libraries(Threads::Threads ibverbs rdmacm)
 
 # Include all header files under src/common/
@@ -25,6 +35,24 @@ set(SOURCE_FILES
     ${COMMON_FILES}
     ${SRC_FILES}
 )
+file(GLOB COMMON_HEADERS "src/common/*.h")
+file(GLOB RDMA_SRC_HEADERS "src/rdma_src/*.h")
+file(GLOB TCP_SRC_HEADERS "src/tcp_src/*.h")
+file(GLOB COMM_HEADERS "src/*.h")
+
+add_library(at_sendrecv SHARED ${SOURCE_FILES})
+SET_TARGET_PROPERTIES (at_sendrecv PROPERTIES VERSION 0.1 SOVERSION 1)
+INSTALL(FILES ${COMMON_HEADERS} DESTINATION include/at_sendrecv/common)
+INSTALL(FILES ${RDMA_SRC_HEADERS} DESTINATION include/at_sendrecv/rdma_src)
+INSTALL(FILES ${TCP_SRC_HEADERS} DESTINATION include/at_sendrecv/tcp_src)
+INSTALL(FILES ${COMM_HEADERS} DESTINATION include/at_sendrecv/)
+
+INSTALL(TARGETS at_sendrecv LIBRARY DESTINATION lib)
+
+#cmake -DCMAKE_INSTALL_PREFIX=~/Destop/Sendrecv ..
+#SET(CMAKE_INSTALL_PREFIX < install_path >)
+#the method set the install directory
+# g++ alltoall.cpp -o alltoall -I/usr/local/include/at_sendrecv -lat_sendrecv -lpthread
 
 add_executable(test_uniform_normal ${SOURCE_FILES} test_uniform_API/test_uniform_normal.cpp)
 add_executable(test_tcp_normal ${SOURCE_FILES} tests_tcp/test_tcp_normal.cpp)

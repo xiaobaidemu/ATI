@@ -1,3 +1,4 @@
+#ifdef IBEXIST
 #ifndef SENDRECV_RDMA_CONN_P2P_H
 #define SENDRECV_RDMA_CONN_P2P_H
 
@@ -91,3 +92,4 @@ public:
 
 
 #endif //SENDRECV_RDMA_CONN_P2P_H
+#endif

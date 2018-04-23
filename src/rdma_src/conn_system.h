@@ -1,3 +1,4 @@
+#ifdef IBEXIST
 #ifndef SENDRECV_SYSTEM_H
 #define SENDRECV_SYSTEM_H
 #include<iostream>
@@ -57,3 +58,4 @@ private:
 
 #include "rdma_conn_p2p.h"
 #endif //SENDRECV_SYSTEM_H
+#endif
