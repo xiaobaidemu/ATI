@@ -20,7 +20,7 @@ if(iblib_var)
     message("ibverbs and rdmacm library found.")
     add_definitions(-DIBEXIST)
 else()
-    message(FATAL_ERROR "ibverbs and rdmacm library not found")
+    message("ibverbs and rdmacm library not found")
 endif()
 
 link_libraries(Threads::Threads ibverbs rdmacm)
@@ -49,7 +49,7 @@ INSTALL(FILES ${COMM_HEADERS} DESTINATION include/at_sendrecv/)
 
 INSTALL(TARGETS at_sendrecv LIBRARY DESTINATION lib)
 
-#cmake -DCMAKE_INSTALL_PREFIX=~/Destop/Sendrecv ..
+#cmake -DCMAKE_INSTALL_PREFIX=/xxx/xxx ..
 #SET(CMAKE_INSTALL_PREFIX < install_path >)
 #the method set the install directory
 # g++ alltoall.cpp -o alltoall -I/usr/local/include/at_sendrecv -lat_sendrecv -lpthread
