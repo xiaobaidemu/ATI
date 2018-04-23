@@ -60,9 +60,10 @@ bool tcp_conn_p2p::wait(non_block_handle* req){
             tmp_req->tcp_req_info.real_recv_size = tmp_recvd_data.total_content_size;
             tmp_req->_lock.release();
             if(tmp_req == req){
-                return true;
-                IDEBUG("one IRECV end ======== .\n");
+                IDEBUG("one IRECV end .\n");
+                break;
             }
         }
+        return true;
     }
 }

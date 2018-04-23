@@ -1,6 +1,6 @@
 #include "conn_system.h"
 #include <functional>
-
+#define IP_LEN 16
 conn_system::~conn_system() {
     WARN("Transfer System is ready to close.\n");
     env.dispose();
@@ -22,7 +22,7 @@ void conn_system::splitkey(const std::string& s, std::string& ip, int &port, con
 }
 
 conn_system::conn_system(const char *ip, int port) {
-    this->my_listen_ip = (char*)malloc(strlen(ip)+1);
+    this->my_listen_ip = (char*)malloc(IP_LEN);
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
 
@@ -43,7 +43,7 @@ conn_system::conn_system(const char *ip, int port) {
     //usleep(100);
 }
 
-rdma_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
+async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
 {
     //judge whether the rdma_conn_p2p *ret has already existed
     std::string key = std::string(peer_ip) + "_" + std::to_string(peer_port);

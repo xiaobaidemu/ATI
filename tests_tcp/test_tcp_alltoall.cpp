@@ -1,4 +1,4 @@
-#include <tcp_src/tcp_conn_system.h>
+#include <at_sendrecv.h>
 #include <thread>
 #include <vector>
 #define LOCAL_HOST          ("127.0.0.1")
@@ -23,11 +23,12 @@ int main(int argc, char **argv){
             }
             char* recv_data = (char*)malloc(DATA_LENGTH * process_num);
 
-            tcp_conn_system sys(LOCAL_HOST, LOCAL_PORT + i);
-            std::vector<tcp_conn_p2p*> comm_list(process_num);
+            comm_system sys(LOCAL_HOST, LOCAL_PORT + i);
+            async_conn_system *comm_object = sys.get_comm_system();
+            std::vector<async_conn_p2p*> comm_list(process_num);
             for(int k = 0;k < process_num;k++){
                 if(k != i) {
-                    tcp_conn_p2p *tcp_conn_object = sys.init(PEER_HOST, PEER_PORT_BASE + k);
+                    async_conn_p2p *tcp_conn_object = comm_object->init(PEER_HOST, PEER_PORT_BASE + k);
                     comm_list[k] = tcp_conn_object;
                     ASSERT(tcp_conn_object);
                 }
@@ -61,7 +62,7 @@ int main(int argc, char **argv){
             WARN("==========%s_%d   finish task.\n", LOCAL_HOST, LOCAL_PORT + i);
             SUCC("[%s:%d] has succeed initing with all other %d process.\n",
                  LOCAL_HOST, LOCAL_PORT + i, process_num - 1);
-            sleep(1);
+            //sleep(1);
         });
     }
     for(auto& t: processes)

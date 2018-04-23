@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
             WARN("%s:%d ready to init with %s:%d.\n", LOCAL_HOST, LOCAL_PORT+i,
                  PEER_HOST, PEER_PORT_BASE + (i+1)%2);
             tcp_conn_system sys("127.0.0.1", LOCAL_PORT+i);
-            tcp_conn_p2p *tcp_conn_object = sys.init("127.0.0.1", PEER_PORT_BASE + (i+1)%2);
+            tcp_conn_p2p *tcp_conn_object = (tcp_conn_p2p*)sys.init("127.0.0.1", PEER_PORT_BASE + (i+1)%2);
             ASSERT(tcp_conn_object);
             WARN("%s:%d init finished.\n", LOCAL_HOST, LOCAL_PORT+i);
             char *recv_buf = (char*)malloc(DATA_LEN);

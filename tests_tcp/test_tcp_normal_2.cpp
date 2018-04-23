@@ -53,8 +53,9 @@ int main(int argc, char *argv[])
             //CCALL(sched_setaffinity(0, sizeof(mask), &mask));
             WARN("%s:%d ready to init with %s:%d.\n", LOCAL_HOST, LOCAL_PORT+i,
                  PEER_HOST, PEER_PORT_BASE + (i+1)%2);
-            tcp_conn_system sys("127.0.0.1", LOCAL_PORT+i);
-            tcp_conn_p2p *tcp_conn_object = sys.init("127.0.0.1", PEER_PORT_BASE + (i+1)%2);
+            comm_system comm_object(LOCAL_HOST, LOCAL_PORT + i);
+            async_conn_system *sys = comm_object.get_comm_system();
+            async_conn_p2p *tcp_conn_object = sys->init("127.0.0.1", PEER_PORT_BASE + (i+1)%2);
             ASSERT(tcp_conn_object);
             WARN("%s:%d init finished.\n", LOCAL_HOST, LOCAL_PORT+i);
             char *recv_buf_1 = (char*)malloc(DATA_LEN);
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
             double speed = (double)total_size/1024/1024/time_consume;
 
             SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
-            sleep(1);
+            //sleep(1);
         });
     }
     for(auto& t: processes)

@@ -11,6 +11,7 @@ void tcp_conn_system::splitkey(const std::string& s, std::string& ip, int &port,
 }
 tcp_conn_system::tcp_conn_system(const char *ip, int port)
 {
+    IDEBUG("SYSTEM choose tcp_conn_system class.\n");
     this->my_listen_ip = (char*)malloc(IP_LEN);
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
@@ -31,7 +32,7 @@ tcp_conn_system::tcp_conn_system(const char *ip, int port)
     ASSERT(success);
 }
 
-tcp_conn_p2p* tcp_conn_system::init(char* peer_ip, int peer_port){
+async_conn_p2p* tcp_conn_system::init(char* peer_ip, int peer_port){
     std::string key = std::string(peer_ip) + "_" +std::to_string(peer_port);
     tcp_conn_p2p *conn_object = nullptr;
     if(connecting_map.InContains(key)){

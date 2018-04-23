@@ -9,7 +9,11 @@
 #include <sendrecv.h>
 #include "tcp_conn_system.h"
 #include "tcp_resource.h"
-class tcp_conn_p2p {
+#include <at_sendrecv.h>
+
+
+class tcp_conn_p2p : public async_conn_p2p
+{
     friend class tcp_conn_system;
 private:
     lock _active_connected;

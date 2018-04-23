@@ -7,8 +7,10 @@
 #include <sendrecv.h>
 #include <sys/eventfd.h>
 #include "conn_system.h"
+#include <at_sendrecv.h>
 
-class rdma_conn_p2p {
+class rdma_conn_p2p : public async_conn_p2p
+{
     friend class conn_system;
 private:
     int send_event_fd ;

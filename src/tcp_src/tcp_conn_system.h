@@ -10,18 +10,20 @@
 #include <sendrecv.h>
 #include <string>
 #include <common/safemap.h>
+#include <at_sendrecv.h>
 
 class tcp_conn_p2p;
 
 typedef safemap<std::string, tcp_conn_p2p*> TCP_CONN_MAP;
 
-class tcp_conn_system {
+class tcp_conn_system :public async_conn_system
+{
 public:
     tcp_conn_system(const tcp_conn_system&) = delete;
     tcp_conn_system(tcp_conn_system &&) = delete;
     tcp_conn_system &operator=(const tcp_conn_system&) = delete;
     ~tcp_conn_system(){
-
+        env.dispose();
     }
 
 private:
@@ -34,7 +36,7 @@ private:
 
 public:
     tcp_conn_system(const char* my_listen_ip, int my_listen_port);
-    tcp_conn_p2p* init(char* peer_ip, int peer_port);
+    async_conn_p2p* init(char* peer_ip, int peer_port);
 
 private:
     void splitkey(const std::string& s, std::string& ip, int &port, const std::string& c);

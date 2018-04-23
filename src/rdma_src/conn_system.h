@@ -8,6 +8,7 @@
 #include <endian.h>
 #include <byteswap.h>
 #include "rdma_conn_p2p.h"
+#include <at_sendrecv.h>
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
@@ -23,7 +24,8 @@ class rdma_conn_p2p;
 
 typedef safemap<std::string, rdma_conn_p2p*> CONN_MAP;
 
-class conn_system {
+class conn_system : public async_conn_system
+{
 public:
     conn_system(const conn_system&) = delete;
     conn_system(conn_system && ) = delete;
@@ -41,7 +43,7 @@ private:
 
 public:
     conn_system(const char* my_listen_ip, int my_listen_port);
-    rdma_conn_p2p* init(char* peer_ip, int peer_port);
+    async_conn_p2p* init(char* peer_ip, int peer_port);
     void conn_system_finalize(){
         env.dispose();
     }
