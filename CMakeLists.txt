@@ -4,8 +4,8 @@ project(Sendrecv CXX)
 
 # Enable C++ 11
 set(CMAKE_CXX_STANDARD 11)
-add_definitions("-w")
-#add_definitions("-Wall")
+#add_definitions("-w")
+add_definitions("-Wall")
 
 # Add src to include directory
 include_directories("src")
@@ -19,11 +19,12 @@ find_library(iblib_var NAMES ibverbs rdmacm)
 if(iblib_var)
     message("ibverbs and rdmacm library found.")
     add_definitions(-DIBEXIST)
+    link_libraries(Threads::Threads ibverbs rdmacm)
 else()
     message("ibverbs and rdmacm library not found")
+    link_libraries(Threads::Threads)
 endif()
 
-link_libraries(Threads::Threads ibverbs rdmacm)
 
 # Include all header files under src/common/
 file(GLOB COMMON_FILES "src/common/*.cpp" "src/common/*.h" "src/common/*.hpp" "src/common/safemap.h")
