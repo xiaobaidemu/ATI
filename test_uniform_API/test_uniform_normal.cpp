@@ -4,13 +4,12 @@
 #include <thread>
 #include <vector>
 #include <sys/sysinfo.h>
-#include <tcp_src/tcp_conn_system.h>
 
 #define LOCAL_HOST          ("127.0.0.1")
 #define PEER_HOST           ("127.0.0.1")
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
-#define ITERS               100
+#define ITERS               10
 
 /*
  * test case:
@@ -61,6 +60,13 @@ int main(int argc, char *argv[])
             timer _timer;
             non_block_handle isend_req, irecv_req;
             for(int iter = 0; iter < ITERS; iter++){
+                if(i == 0){
+                    if(iter == (int)ITERS/2)
+                    {
+                        ERROR("[rank %d] iter %d  break!!!!!!!!!!.\n", i , iter);
+                        return;
+                    }
+                }
                 async_conn_object->isend(dummy_data, DATA_LEN, &isend_req);
                 async_conn_object->irecv(recv_buf, DATA_LEN, &irecv_req);
                 async_conn_object->wait(&isend_req);
@@ -72,8 +78,9 @@ int main(int argc, char *argv[])
             double speed = (double)total_size/1024/1024/time_consume;
 
             SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
-
-            //sleep(1);
+#ifdef IBEXIST
+            SUCC("IBEXIST.\n");
+#endif
         });
     }
     for(auto& t: processes)
