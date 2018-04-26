@@ -21,7 +21,7 @@ int main(int argc, char **argv)
         processes[i] = std::thread([i, process_num](){
 
             comm_system sys(LOCAL_HOST, LOCAL_PORT + i);
-            async_conn_system *comm_object = sys.get_comm_system();
+            async_conn_system *comm_object = sys.get_conn_system();
 
             for(int k = 0;k < process_num;k++){
                 if(k != i) {

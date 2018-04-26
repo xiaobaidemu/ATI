@@ -24,7 +24,7 @@ int main(int argc, char **argv){
             char* recv_data = (char*)malloc(DATA_LENGTH * process_num);
 
             comm_system sys(LOCAL_HOST, LOCAL_PORT + i);
-            async_conn_system *comm_object = sys.get_comm_system();
+            async_conn_system *comm_object = sys.get_conn_system();
             std::vector<async_conn_p2p*> comm_list(process_num);
             for(int k = 0;k < process_num;k++){
                 if(k != i) {

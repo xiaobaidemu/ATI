@@ -37,7 +37,7 @@ bool comm_system::verifyrdma()
         return false;
 }
 
-async_conn_system* comm_system::get_comm_system(){
+async_conn_system* comm_system::get_conn_system(){
 #ifdef IBEXIST
     if(verifyrdma())
         conn_sys_type = RDMA_SYSTEM;

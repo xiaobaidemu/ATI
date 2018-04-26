@@ -4,7 +4,7 @@
 #include <thread>
 #include <vector>
 #include <sys/sysinfo.h>
-#include <tcp_src/tcp_conn_system.h>
+
 
 #define LOCAL_HOST          ("127.0.0.1")
 #define PEER_HOST           ("127.0.0.1")
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
                  PEER_HOST, PEER_PORT_BASE + (i+1)%2);
 
             comm_system sys("127.0.0.1", LOCAL_PORT+i);
-            async_conn_system *comm_object = sys.get_comm_system();
+            async_conn_system *comm_object = sys.get_conn_system();
 
             async_conn_p2p *async_conn_object = comm_object->init("127.0.0.1", PEER_PORT_BASE + (i+1)%2);
             ASSERT(async_conn_object);

@@ -20,11 +20,17 @@ private:
     char  my_ip[IP_LEN];
     int   my_port;
 public:
+    comm_system(const comm_system&) = delete;
+    comm_system(comm_system &&) = delete;
+    comm_system &operator=(const comm_system&) = delete;
     comm_system(const char* my_listen_ip, int my_listen_port){
         strcpy(this->my_ip, my_listen_ip);
         this->my_port = my_listen_port;
     }
-    async_conn_system* get_comm_system();
+    async_conn_system* get_conn_system();
+    bool use_oneside(){
+        return conn_sys_type == RDMA_SYSTEM ? true : false;
+    }
 private:
     enum SYS_TYPE conn_sys_type;
     bool verifyrdma();
