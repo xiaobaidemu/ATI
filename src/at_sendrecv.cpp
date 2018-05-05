@@ -22,19 +22,27 @@ bool comm_system::verifyrdma()
     }
     else{
         cmd = "ls -h /dev/infiniband |wc -l";
+        FILE *fp;
         const char *testib = cmd.data();
-        if ((fp = popen(sysCommand, "r")) == NULL) {
+        if ((fp = popen(testib, "r")) == NULL) {
             ERROR("Some thing error when verify the status of network.\n");
             exit(0);
         }
         while (fgets(line, sizeof(line)-1, fp) != NULL){
             IDEBUG("ib_mod_num is %d\n", atoi(line));
         }
+        ib_mod_num = atoi(line);
+        pclose(fp);
     }
     if(linenum > 0 && ib_mod_num > 1)
+    {
+        NOTICE("linenum %d, ib_mod_num %d\n", linenum, ib_mod_num);
         return true;
-    else
+    }
+    else{
+        NOTICE("linenum %d, ib_mod_num %d\n", linenum, ib_mod_num);
         return false;
+    }
 }
 
 async_conn_system* comm_system::get_conn_system(){

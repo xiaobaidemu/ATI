@@ -7,7 +7,7 @@
 #define PEER_HOST           ("127.0.0.1")
 #define LOCAL_PORT          (8801)
 #define PEER_PORT_BASE      (8801)
-#define ITERS               100
+#define ITERS               10
 
 /*
  * test case:
@@ -55,7 +55,14 @@ int main(int argc, char *argv[])
             timer _timer;
             non_block_handle isend_req, irecv_req;
             for(int iter = 0; iter < ITERS; iter++){
+            if(i == 0){
+                /*if(iter == (int)ITERS/2){
+                    ERROR("BREAK!!!!!!!!!!!!!!!!!!!!!\n");
+                    return;
+                }*/
+            }
                 tcp_conn_object->isend(dummy_data, DATA_LEN, &isend_req);
+                WARN("[rank %d]:iters:%d\n", i, iter);
                 tcp_conn_object->irecv(recv_buf, DATA_LEN, &irecv_req);
                 tcp_conn_object->wait(&isend_req);
                 tcp_conn_object->wait(&irecv_req);
@@ -68,6 +75,9 @@ int main(int argc, char *argv[])
             SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
 
             //sleep(1);
+#ifdef IBEXIST
+            SUCC("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+#endif
         });
     }
     for(auto& t: processes)
