@@ -3,6 +3,7 @@
 /.idea/
 /cmake-build-*/
 /build/
+/vssln/
 # CMake results
 /CMakeCache.txt
 /CMakeFiles/
