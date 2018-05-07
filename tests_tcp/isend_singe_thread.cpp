@@ -111,6 +111,7 @@ int main(int argc, char* argv[])
     }
     double time_consume = _timer.elapsed();
     size_t total_size = send_bytes*2*iters;
+    SUCC("SEND_BYTES:%lld ITERS :%d\n", (long long)send_bytes, iters);
     double speed = (double)total_size/1024/1024/time_consume;
 
     SUCC("time %.6lfs, total_size %lld bytes, speed %.2lf MB/sec\n", time_consume, (long long)total_size, speed);
