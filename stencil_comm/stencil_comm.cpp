@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
         dummy_data_w[i] = (char)(unsigned char)i;
     }
 
-    std::vector<rdma_conn_p2p*> conn_list(DIRECTION);
+    std::vector<rdma_conn_p2p*> conn_list(PX*PY);
     conn_system sys(nodelist[myrank].ip_addr, nodelist[myrank].listen_port);
     int rx = myrank % PX;
     int ry = myrank / PY;
@@ -121,12 +121,15 @@ int main(int argc, char* argv[])
     int east = ry*PX+(rx+1)%PX;
     //SUCC("myrank:%d (%d,%d) N:%d, S:%d, W:%d, E:%d\n", myrank, rx, ry, north, south, west, east);
 
-    conn_list[N] = (rdma_conn_p2p*)sys.init(nodelist[north].ip_addr, nodelist[north].listen_port);
-    conn_list[S] = (rdma_conn_p2p*)sys.init(nodelist[south].ip_addr, nodelist[south].listen_port);
-    conn_list[W] = (rdma_conn_p2p*)sys.init(nodelist[west].ip_addr, nodelist[west].listen_port);
-    conn_list[E] = (rdma_conn_p2p*)sys.init(nodelist[east].ip_addr, nodelist[east].listen_port);
+    for(int i = 0;i < PX*PY;i++){
+        if(myrank != i)
+            conn_list[i] = (rdma_conn_p2p*)sys.init(nodelist[i].ip_addr, nodelist[i].listen_port);
+        else
+            conn_list[i] = nullptr;
+    }
 
-    for(int i = 0;i < DIRECTION;i++)
+
+    for(int i = 0;i < PX*PY;i++)
         ASSERT(conn_list[i]);
     SUCC("%s:%d init finished.\n", nodelist[myrank].ip_addr, nodelist[myrank].listen_port);
 
@@ -135,28 +138,28 @@ int main(int argc, char* argv[])
     non_block_handle irecv_req[4];
     timer _timer;
 
-    for(int iter = 0; iter < iters; iter++){
-        conn_list[N]->isend(dummy_data_n, send_bytes, isend_req+N);
-        conn_list[S]->isend(dummy_data_s, send_bytes, isend_req+S);
-        conn_list[W]->isend(dummy_data_w, send_bytes, isend_req+W);
-        conn_list[E]->isend(dummy_data_e, send_bytes, isend_req+E);
+   /* for(int iter = 0; iter < iters; iter++){
+        conn_list[north]->isend(dummy_data_n, send_bytes, isend_req+N);
+        conn_list[south]->isend(dummy_data_s, send_bytes, isend_req+S);
+        conn_list[west]->isend(dummy_data_w, send_bytes, isend_req+W);
+        conn_list[east]->isend(dummy_data_e, send_bytes, isend_req+E);
 
-        conn_list[N]->irecv(recv_buf_n, send_bytes, irecv_req+N);
-        conn_list[S]->irecv(recv_buf_s, send_bytes, irecv_req+S);
-        conn_list[W]->irecv(recv_buf_w, send_bytes, irecv_req+W);
-        conn_list[E]->irecv(recv_buf_e, send_bytes, irecv_req+E);
+        conn_list[north]->irecv(recv_buf_n, send_bytes, irecv_req+N);
+        conn_list[south]->irecv(recv_buf_s, send_bytes, irecv_req+S);
+        conn_list[west]->irecv(recv_buf_w, send_bytes, irecv_req+W);
+        conn_list[east]->irecv(recv_buf_e, send_bytes, irecv_req+E);
 
-        conn_list[N]->wait(isend_req+N);
-        conn_list[S]->wait(isend_req+S);
-        conn_list[W]->wait(isend_req+W);
-        conn_list[E]->wait(isend_req+E);
+        conn_list[north]->wait(isend_req+N);
+        conn_list[south]->wait(isend_req+S);
+        conn_list[west]->wait(isend_req+W);
+        conn_list[east]->wait(isend_req+E);
 
-        conn_list[N]->wait(irecv_req+N);
-        conn_list[S]->wait(irecv_req+S);
-        conn_list[W]->wait(irecv_req+W);
-        conn_list[E]->wait(irecv_req+E);
+        conn_list[north]->wait(irecv_req+N);
+        conn_list[south]->wait(irecv_req+S);
+        conn_list[west]->wait(irecv_req+W);
+        conn_list[east]->wait(irecv_req+E);
         SUCC("[rank:%d] iter %d.\n", myrank, iter);
-    }
+    }*/
     double time_consume = _timer.elapsed();
     SUCC("time %.6lfs\n", time_consume);
 
