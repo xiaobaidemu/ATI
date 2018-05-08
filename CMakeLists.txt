@@ -63,6 +63,7 @@ add_executable(test_tcp_alltoall  ${SOURCE_FILES} tests_tcp/test_tcp_alltoall.cp
 add_executable(test_tcp_normal_2  ${SOURCE_FILES} tests_tcp/test_tcp_normal_2.cpp)
 add_executable(test_tcp_mix_diff_size  ${SOURCE_FILES} tests_tcp/test_tcp_mix_diff_size.cpp)
 add_executable(test_tcp  ${SOURCE_FILES} tests_tcp/isend_singe_thread.cpp)
+add_executable(test_rdma  ${SOURCE_FILES} tests_tcp/isend_rdma_single.cpp)
 #add_executable(two_process_normal ${SOURCE_FILES} tests_rdma/two_process_normal.cpp)
 #add_executable(two_process_normal_2 ${SOURCE_FILES} tests_rdma/two_process_normal_2.cpp)
 add_executable(two_process_oneside ${SOURCE_FILES} tests_rdma/two_process_oneside.cpp)
