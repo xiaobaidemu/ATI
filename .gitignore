@@ -4,6 +4,7 @@
 /cmake-build-*/
 /build/
 /vssln/
+/stencil_comm/out/
 # CMake results
 /CMakeCache.txt
 /CMakeFiles/
