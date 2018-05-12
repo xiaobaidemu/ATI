@@ -129,8 +129,6 @@ int main(int argc, char* argv[])
     }
 
 
-    for(int i = 0;i < PX*PY;i++)
-        ASSERT(conn_list[i]);
     SUCC("%s:%d init finished.\n", nodelist[myrank].ip_addr, nodelist[myrank].listen_port);
 
 
@@ -138,7 +136,7 @@ int main(int argc, char* argv[])
     non_block_handle irecv_req[4];
     timer _timer;
 
-   /* for(int iter = 0; iter < iters; iter++){
+    for(int iter = 0; iter < iters; iter++){
         conn_list[north]->isend(dummy_data_n, send_bytes, isend_req+N);
         conn_list[south]->isend(dummy_data_s, send_bytes, isend_req+S);
         conn_list[west]->isend(dummy_data_w, send_bytes, isend_req+W);
@@ -158,8 +156,8 @@ int main(int argc, char* argv[])
         conn_list[south]->wait(irecv_req+S);
         conn_list[west]->wait(irecv_req+W);
         conn_list[east]->wait(irecv_req+E);
-        SUCC("[rank:%d] iter %d.\n", myrank, iter);
-    }*/
+        if(myrank == 0) SUCC("[rank:%d] iter %d.\n", myrank, iter);
+    }
     double time_consume = _timer.elapsed();
     SUCC("time %.6lfs\n", time_consume);
 

@@ -25,7 +25,7 @@
 #define DEBUG(__format, ...)    //__LOGGER_OUTPUT("DEBUG",  "35;1", __format, ##__VA_ARGS__)
 #define INFO(__format, ...)     //__LOGGER_OUTPUT("INFO",   "37",   __format, ##__VA_ARGS__)
 #define NOTICE(__format, ...)   __LOGGER_OUTPUT("NOTICE", "32;1", __format, ##__VA_ARGS__)
-#define WARN(__format, ...)     __LOGGER_OUTPUT("WARN",   "33;1", __format, ##__VA_ARGS__)
+#define WARN(__format, ...)     //__LOGGER_OUTPUT("WARN",   "33;1", __format, ##__VA_ARGS__)
 #define SUCC(__format, ...)     __LOGGER_OUTPUT("SUCC",   "32;1", __format, ##__VA_ARGS__)
 #define ERROR(__format, ...)    __LOGGER_OUTPUT("ERROR",  "31;1", __format, ##__VA_ARGS__)
 #define FATAL(__format, ...)    __LOGGER_OUTPUT("FATAL",  "31;1", __format, ##__VA_ARGS__)
@@ -34,7 +34,7 @@
 #define ITR_SEND(__format, ...)  //__LOGGER_OUTPUT("ISEND",  "34;1", __format, ##__VA_ARGS__)
 #define ITR_RECV(__format, ...)  //__LOGGER_OUTPUT("IRECV",  "36;1", __format, ##__VA_ARGS__)
 #define ITR_POLL(__format, ...)   // __LOGGER_OUTPUT("POLL",  "30;1", __format, ##__VA_ARGS__)
-#define ITR_SPECIAL(__format, ...)    __LOGGER_OUTPUT("SPECIAL",  "36;1", __format, ##__VA_ARGS__)
+#define ITR_SPECIAL(__format, ...)   // __LOGGER_OUTPUT("SPECIAL",  "36;1", __format, ##__VA_ARGS__)
 
 #define RANK_0(__format, ...)     __LOGGER_OUTPUT("RANK_0",   "32;1", __format, ##__VA_ARGS__)
 #define RANK_1(__format, ...)     __LOGGER_OUTPUT("RANK_1",   "33;1", __format, ##__VA_ARGS__)

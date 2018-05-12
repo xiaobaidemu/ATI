@@ -1,4 +1,4 @@
 tcp:
-mpirun --mca btl self,tcp  --mca btl_tcp_if_include eth0 -np 2 --hostfile ./hostfile ./mpi_speed 1
+mpirun --mca btl self,tcp  --mca btl_tcp_if_include eth0 -np 9 --hostfile ./hostfile ./mpi_speed 1
 rdma:
-mpirun --mca btl_openib_verbose 1 --mca btl openib -np 2 --hostfile ./hostfile ./mpi_speed 1
+mpirun --mca btl_openib_verbose 1 --mca btl openib -np 9 --hostfile ./hostfile --map-by slot ./mpi_speed 1

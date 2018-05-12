@@ -28,15 +28,15 @@ int main(int argc, char **argv) {
     MPI_Comm_size(comm, &p);
 
     // determine my coordinates (x,y) -- r=x*a+y in the 2d processor array
-    int rx = myrank % PX;
-    int ry = myrank / PY;
+    int rx = r % PX;
+    int ry = r / PY;
 
     // determine my four neighbors
     int north = (ry-1+PY)%PY*PX+rx;
     int south = (ry+1)%PY*PX+rx;
     int west = ry*PX+(rx-1+PX)%PX;
     int east = ry*PX+(rx+1)%PX;
-
+    printf("myrank:%d (%d,%d) N:%d, S:%d, W:%d, E:%d\n", r, rx, ry, north, south, west, east);
 
     double t=-MPI_Wtime(); // take time
     // allocate communication buffers
@@ -68,14 +68,14 @@ int main(int argc, char **argv) {
         MPI_Irecv(recv_buf_s, send_bytes, MPI_CHAR, south, 9, comm, &reqs[5]);
         MPI_Irecv(recv_buf_w, send_bytes, MPI_CHAR, west, 9, comm, &reqs[6]);
         MPI_Irecv(recv_buf_e, send_bytes, MPI_CHAR, east, 9, comm, &reqs[7]);
-        MPI_Wait(&reqs[0], nullptr);
-        MPI_Wait(&reqs[1], nullptr);
-        MPI_Wait(&reqs[2], nullptr);
-        MPI_Wait(&reqs[3], nullptr);
-        MPI_Wait(&reqs[4], nullptr);
-        MPI_Wait(&reqs[5], nullptr);
-        MPI_Wait(&reqs[6], nullptr);
-        MPI_Wait(&reqs[7], nullptr);
+        MPI_Wait(&reqs[0], NULL);
+        MPI_Wait(&reqs[1], NULL);
+        MPI_Wait(&reqs[2], NULL);
+        MPI_Wait(&reqs[3], NULL);
+        MPI_Wait(&reqs[4], NULL);
+        MPI_Wait(&reqs[5], NULL);
+        MPI_Wait(&reqs[6], NULL);
+        MPI_Wait(&reqs[7], NULL);
         if(r == 0)printf("iters:%d.\n", iter);
         //MPI_Waitall(8, reqs, MPI_STATUS_IGNORE);
     }
