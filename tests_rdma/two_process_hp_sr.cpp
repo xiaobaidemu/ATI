@@ -1,4 +1,5 @@
 #include <rdma_src/conn_system.h>
+#include <at_sendrecv.h>
 #include <thread>
 #include <vector>
 #include <sys/sysinfo.h>
@@ -73,11 +74,13 @@ int main(int argc, char *argv[])
                     //ITR_SPECIAL("oneside_isend begin %d time.\n", iter);
                     rdma_conn_object->hp_isend(dummy_data, DATA_LEN, &hp_isend_req, &send_info);
                     rdma_conn_object->wait(&hp_isend_req);
+                    //SUCC("[hp_isend] iter %d.\n", iter);
                     //ITR_SPECIAL("oneside_isend end %d time.\n", iter);
                 }
-                else{
-                    rdma_conn_object->hp_recv_wait(&hp_irecv_req, ITERS);
-                }
+            }
+            if(i == 1){
+                rdma_conn_object->hp_recv_wait(&hp_irecv_req, ITERS);
+                SUCC("[all recv finish.\n]......");
             }
             double time_consume = _timer.elapsed();
             size_t total_size = DATA_LEN*ITERS;

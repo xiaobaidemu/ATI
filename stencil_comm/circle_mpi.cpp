@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     int right = (r+1)%p;
     int maxrank = p-1;
     // determine my coordinates (x,y) -- r=x*a+y in the 2d processor array
-
+    printf("myrank : %d, left : %d, right :%d.\n", r, left, right);
     double t=-MPI_Wtime(); // take time
     // allocate communication buffers
     char* dummy_data[T], *recv_buf[T];

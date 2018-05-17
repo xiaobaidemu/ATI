@@ -503,7 +503,7 @@ bool rdma_conn_p2p::do_recv_completion(int n, struct ibv_wc *wc_recv){
                         send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
                         pending_send pending_req;
                         pending_req.is_big = true;
-                        ASSERT(recvd_req->send_addr);ASSERT(recvd_req->send_mr);
+                        //ASSERT(recvd_req->send_addr);ASSERT(recvd_req->send_mr);
                         pending_req.big.big_addr = recvd_req->send_addr;
                         pending_req.big.big_mr   = recvd_req->send_mr;
                         pending_req.big.size     = recvd_req->len;
