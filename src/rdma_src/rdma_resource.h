@@ -9,20 +9,27 @@ enum WAIT_TYPE{
     WAIT_ONESIDE_RECV_PRE,
     WAIT_ONESIDE_SEND,
     WAIT_ONESIDE_RECV,
+    WAIT_HP_ISEND_INIT,
+    WAIT_HP_IRECV_INIT,
+    WAIT_HP_ISEND,
+
 };
 
 struct non_block_handle{
     lock _lock;
     int  index;//related to arraypool,array
     enum WAIT_TYPE type;
-    uintptr_t oneside_info_addr;//only for oneside_send_pre
+    uintptr_t oneside_info_addr;//only for oneside_send_pre/hp_isend_pre
     //only for tcp_conn_system
     struct{
         void   *tcp_irecv_addr;
         size_t real_recv_size;
     }tcp_req_info;
-
+    int hp_irecv_times;//the max times receive side can receive
+    volatile int hp_cur_times;//the times receive side has received
 };
+
+
 typedef struct non_block_handle       non_block_handle;
 
 #ifdef IBEXIST
@@ -131,6 +138,7 @@ struct send_req_clt_info{
     uint32_t      len;
     int           isend_index;
     bool          is_oneside;
+    bool          is_hp_init;
 };
 
 struct ctl_flow_info{ //irecver with send these info to isender, isender will post_recv these info
@@ -161,6 +169,7 @@ struct pending_send{
             struct ibv_mr *big_mr;
             int    isend_index;
             bool   is_oneside;
+            bool   is_hp_init;
         }big;
         struct {
             void   *pos;
@@ -212,6 +221,13 @@ public:
     }
 };
 
+struct hp_oneside_info{
+    uintptr_t recv_buffer;
+    uint32_t  rkey;
+    int       read_index_start;
+    int       total_send_times;
+};
+
 struct oneside_info{
     uintptr_t recv_buffer;
     uint32_t  rkey;
@@ -238,6 +254,20 @@ public:
     }
 };
 
+struct hp_isend_info{
+    uintptr_t recv_buffer;
+    uint32_t  rkey;
+    int total_put_times;
+    int cur_put_times;
+    non_block_handle *req;
+public:
+    hp_isend_info(){}
+    void set_hp_isend_info(uintptr_t rb, uint32_t rk){
+        recv_buffer = rb;
+        rkey =rk;
+        cur_put_times = 0;
+    }
+};
 
 
 typedef struct exchange_qp_data       exchange_qp_data;
