@@ -94,95 +94,65 @@ int main(int argc, char* argv[])
                 return 0;
         }
     }
-    char* dummy_data[DIRECTION], *recv_buf[DIRECTION];
-    for(int i = 0;i < DIRECTION;i++){
+    char* dummy_data[T-1], *recv_buf[T-1];
+    for(int i = 0;i < T-1;i++){
         dummy_data[i] = (char*)malloc(send_bytes);
         recv_buf[i] = (char*)malloc(send_bytes);
     }
-    for(int j = 0;j < DIRECTION;j++)
+    for(int j = 0;j < T-1;j++)
         for (size_t i = 0; i < send_bytes; ++i) {
             dummy_data[j][i] = (char)(unsigned char)i;
         }
 
-    std::vector<rdma_conn_p2p*> conn_list(DIRECTION);
-    conn_system sys(nodelist[myrank].ip_addr, nodelist[myrank].listen_port);
-    int rx = myrank % PX;
-    int ry = myrank / PY;
 
-    // determine my four neighbors
-    int north = (ry-1+PY)%PY*PX+rx;
-    int south = (ry+1)%PY*PX+rx;
-    int west= ry*PX+(rx-1+PX)%PX;
-    int east = ry*PX+(rx+1)%PX;
+    std::vector<rdma_conn_p2p*> conn_list;
+    if(myrank == 0)
+        conn_list.resize(T-1);
+    else
+        conn_list.resize(1);
+    conn_system sys(nodelist[myrank].ip_addr, nodelist[myrank].listen_port);
+
+
     //SUCC("myrank:%d (%d,%d) N:%d, S:%d, W:%d, E:%d\n", myrank, rx, ry, north, south, west, east);
 
-    //1 step
-    if(myrank%PX==0){
-        conn_list[E] = (rdma_conn_p2p*)sys.init(nodelist[east].ip_addr, nodelist[east].listen_port);
+    if(myrank == 0){
+        for(int i = 1;i < T;i++){
+            conn_list[i-1] = (rdma_conn_p2p*)sys.init(nodelist[i].ip_addr, nodelist[i].listen_port);
+        }
     }
-    else if(myrank%PX==1){
-        conn_list[W] = (rdma_conn_p2p*)sys.init(nodelist[west].ip_addr, nodelist[west].listen_port);
+    else{
+        conn_list[0] =  (rdma_conn_p2p*)sys.init(nodelist[0].ip_addr, nodelist[0].listen_port);
     }
-    //2 step
-    if(myrank < PX){
-        conn_list[S] = (rdma_conn_p2p*)sys.init(nodelist[south].ip_addr, nodelist[south].listen_port);
-    }
-    else if(myrank >= PX && myrank < 2*PX){
-        conn_list[N] = (rdma_conn_p2p*)sys.init(nodelist[north].ip_addr, nodelist[north].listen_port);
-    }
-    //3 step
-    if(myrank%PX==1){
-        conn_list[E] = (rdma_conn_p2p*)sys.init(nodelist[east].ip_addr, nodelist[east].listen_port);
-    }
-    else if(myrank%PX==2){
-        conn_list[W] = (rdma_conn_p2p*)sys.init(nodelist[west].ip_addr, nodelist[west].listen_port);
-    }
-    //4 step
-    if(myrank >= PX && myrank < 2*PX){
-        conn_list[S] = (rdma_conn_p2p*)sys.init(nodelist[south].ip_addr, nodelist[south].listen_port);
-    }
-    else if(myrank >= 2*PX){
-        conn_list[N] = (rdma_conn_p2p*)sys.init(nodelist[north].ip_addr, nodelist[north].listen_port);
-    }
-    //5 step
-    if(myrank == 0 || myrank == 6){
-        conn_list[W] = (rdma_conn_p2p*)sys.init(nodelist[west].ip_addr, nodelist[west].listen_port);
-    }
-    else if(myrank == 2 || myrank == 8){
-        conn_list[E] = (rdma_conn_p2p*)sys.init(nodelist[east].ip_addr, nodelist[east].listen_port);
-    }
-    //6 step
-    if(myrank == 0 || myrank == 2){
-        conn_list[N] = (rdma_conn_p2p*)sys.init(nodelist[north].ip_addr, nodelist[north].listen_port);
-    }
-    else if(myrank == 6 || myrank == 8){
-        conn_list[S] = (rdma_conn_p2p*)sys.init(nodelist[south].ip_addr, nodelist[south].listen_port);
-    }
-
-    for(int i=0;i < DIRECTION;i++)
-        ASSERT(conn_list[i]);
-
 
     SUCC("%s:%d init finished.\n", nodelist[myrank].ip_addr, nodelist[myrank].listen_port);
 
 
-    non_block_handle isend_req[DIRECTION];
-    non_block_handle irecv_req[DIRECTION];
+    non_block_handle isend_req[T-1];
+    non_block_handle irecv_req[T-1];
     timer _timer;
 
     for(int iter = 0; iter < iters; iter++){
-        for(int i = 0;i < DIRECTION;i++){
-            conn_list[i]->isend(dummy_data[i], send_bytes, isend_req+i);
+        if(myrank == 0){
+            for(int i = 0;i < T-1;i++){
+                conn_list[i]->irecv(recv_buf[i], send_bytes, irecv_req+i);
+            }
+            for(int i = 0;i < T-1;i++){
+                conn_list[i]->wait(irecv_req+i);
+            }
+            for(int i = 0;i < T-1;i++){
+                conn_list[i]->isend(dummy_data[i], send_bytes, isend_req+i);
+            }
+            for(int i = 0;i < T-1;i++){
+                conn_list[i]->wait(isend_req+i);
+            }
         }
-        for(int i = 0;i < DIRECTION;i++){
-            conn_list[i]->irecv(recv_buf[i], send_bytes, irecv_req+i);
+        else{
+            conn_list[0]->isend(dummy_data[0], send_bytes, isend_req);
+            conn_list[0]->wait(isend_req);
+            conn_list[0]->irecv(recv_buf[0], send_bytes, irecv_req);
+            conn_list[0]->wait(irecv_req);
         }
-        for(int i = 0;i < DIRECTION;i++){
-            conn_list[i]->wait(isend_req+i);
-        }
-        for(int i = 0;i < DIRECTION;i++){
-             conn_list[i]->wait(irecv_req+i);
-        }
+
         if(myrank == 0) SUCC("[rank:%d] iter %d.\n", myrank, iter);
     }
     double time_consume = _timer.elapsed();

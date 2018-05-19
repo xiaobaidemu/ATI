@@ -90,7 +90,7 @@ public:
     int oneside_isend(oneside_info *peer_info, non_block_handle *req);
 
     int hp_isend_init(non_block_handle* req, oneside_info *peer_info);
-    int hp_irecv_init(void *buf, size_t count, non_block_handle *req,  int send_times, oneside_info *peer_info);
+    int hp_irecv_init(void *buf, size_t count, non_block_handle *req,  int send_times, oneside_info *my_info);
     int hp_isend(const void *buf, size_t count, non_block_handle *req, oneside_info* peer_info);
     bool hp_recv_wait(non_block_handle *req, int send_times);// recv side will wait send_times
 };
