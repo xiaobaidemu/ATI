@@ -156,6 +156,6 @@ int main(int argc, char* argv[])
         if(myrank == 0) SUCC("[rank:%d] iter %d.\n", myrank, iter);
     }
     double time_consume = _timer.elapsed();
-    SUCC("time %.6lfs\n", time_consume);
+    SUCC("[rank:%d] time %.6lfs\n", myrank, time_consume);
 
 }

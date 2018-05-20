@@ -68,10 +68,11 @@ int main(int argc, char **argv) {
             }
         }
         else{
-            MPI_Isend(dummy_data[0], send_bytes, MPI_CHAR, 0, 123, comm, &reqs_send[0]);
-            MPI_Wait(&reqs_send[0], NULL);
-            MPI_Irecv(recv_buf[0], send_bytes, MPI_CHAR, 0, 123, comm, &reqs_recv[0]);
-            MPI_Wait(&reqs_recv[0], NULL);
+            MPI_Request reqs_send, reqs_recv;
+            MPI_Isend(dummy_data[0], send_bytes, MPI_CHAR, 0, 123, comm, &reqs_send);
+            MPI_Wait(&reqs_send, NULL);
+            MPI_Irecv(recv_buf[0], send_bytes, MPI_CHAR, 0, 123, comm, &reqs_recv);
+            MPI_Wait(&reqs_recv, NULL);
         }
 
         if(r == 0)printf("iters:%d.\n", iter);
@@ -80,7 +81,7 @@ int main(int argc, char **argv) {
     t+=MPI_Wtime();
 
     // get final heat in the system
-    printf("time: %f\n", t);
+    printf("[myrank:%d] time: %f\n",r, t);
 
     MPI_Finalize();
 }

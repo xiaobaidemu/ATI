@@ -1,3 +1,4 @@
+192.168.4.27 slots=1 max_slots=1
 192.168.4.28 slots=3 max_slots=3
 192.168.4.29 slots=3 max_slots=3
-192.168.4.27 slots=3 max_slots=3
+192.168.4.10 slots=2 max_slots=2
