@@ -145,22 +145,23 @@ int main(int argc, char* argv[])
         conn_list[N] = (rdma_conn_p2p*)sys.init(nodelist[north].ip_addr, nodelist[north].listen_port);
     }
     //5 step
-    if(myrank == 0 || myrank == 6){
+    if(myrank%3== 0){
         conn_list[W] = (rdma_conn_p2p*)sys.init(nodelist[west].ip_addr, nodelist[west].listen_port);
     }
-    else if(myrank == 2 || myrank == 8){
+    else if(myrank%3==2){
         conn_list[E] = (rdma_conn_p2p*)sys.init(nodelist[east].ip_addr, nodelist[east].listen_port);
     }
     //6 step
-    if(myrank == 0 || myrank == 2){
+    if(myrank<PX){
         conn_list[N] = (rdma_conn_p2p*)sys.init(nodelist[north].ip_addr, nodelist[north].listen_port);
     }
-    else if(myrank == 6 || myrank == 8){
+    else if(myrank>=2*PX){
         conn_list[S] = (rdma_conn_p2p*)sys.init(nodelist[south].ip_addr, nodelist[south].listen_port);
     }
 
     for(int i=0;i < DIRECTION;i++)
         ASSERT(conn_list[i]);
+    SUCC("rank %d connected successed.\n", myrank);
 
 
     SUCC("%s:%d init finished.\n", nodelist[myrank].ip_addr, nodelist[myrank].listen_port);
