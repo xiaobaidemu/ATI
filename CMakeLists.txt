@@ -55,6 +55,7 @@ INSTALL(TARGETS at_sendrecv LIBRARY DESTINATION lib)
 #the method set the install directory
 # g++ alltoall.cpp -o alltoall -I/usr/local/include/at_sendrecv -lat_sendrecv -lpthread
 
+
 #add_executable(test_uniform_normal ${SOURCE_FILES} test_uniform_API/test_uniform_normal.cpp)
 #add_executable(test_tcp_normal ${SOURCE_FILES} tests_tcp/test_tcp_normal.cpp)
 #add_executable(test_tcp_init_n ${SOURCE_FILES} tests_tcp/test_tcp_init_n.cpp)
@@ -66,12 +67,12 @@ INSTALL(TARGETS at_sendrecv LIBRARY DESTINATION lib)
 #add_executable(test_rdma  ${SOURCE_FILES} tests_tcp/isend_rdma_single.cpp)
 #add_executable(test_stencil ${SOURCE_FILES} stencil_comm/stencil_comm.cpp)
 #add_executable(test_ata ${SOURCE_FILES} stencil_comm/ata_comm.cpp)
-add_executable(test_circle ${SOURCE_FILES} stencil_comm/circle_comm.cpp)
+#add_executable(test_circle ${SOURCE_FILES} stencil_comm/circle_comm.cpp)
 #add_executable(two_process_normal ${SOURCE_FILES} tests_rdma/two_process_normal.cpp)
 #add_executable(two_process_normal_2 ${SOURCE_FILES} tests_rdma/two_process_normal_2.cpp)
 #add_executable(two_process_oneside ${SOURCE_FILES} tests_rdma/two_process_oneside.cpp)
-add_executable(two_process_hp ${SOURECE_FILES} tests_rdma/two_process_hp_sr.cpp)
-#add_executable(init_n_process ${SOURCE_FILES} tests_rdma/init_n_process.cpp)
+#add_executable(two_process_hp ${SOURECE_FILES} tests_rdma/two_process_hp_sr.cpp)
+add_executable(init_n_process ${SOURCE_FILES} tests_rdma/init_n_process.cpp)
 #add_executable(two_process_large ${SOURCE_FILES} tests_rdma/two_process_large.cpp)
 #add_executable(two_process_mix ${SOURCE_FILES} tests_rdma/two_process_mix.cpp)
 #add_executable(two_process_mix_oneside ${SOURCE_FILES} tests_rdma/two_process_mix_oneside.cpp)

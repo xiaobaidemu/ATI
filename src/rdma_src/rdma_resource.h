@@ -46,14 +46,14 @@ struct exchange_qp_data {
 } __attribute__((packed));
 
 struct unidirection_rdma_conn{
-    struct ibv_context	*context;
-    struct ibv_comp_channel *channel;
-    struct ibv_pd		*pd;
-    struct ibv_cq		*cq;
+    //struct ibv_context	*context;
+    //struct ibv_comp_channel *channel;
+    //struct ibv_pd		*pd;
+    //struct ibv_cq		*cq;
     struct ibv_qp		*qp;
-    int			        rx_depth;
+    //int			    rx_depth;
     int                 ib_port;
-    struct ibv_port_attr     portinfo;//
+    struct ibv_port_attr     portinfo;
 };
 
 enum head_type{

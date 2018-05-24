@@ -63,14 +63,14 @@ public:
     async_conn_p2p(async_conn_p2p &&) = delete;
     async_conn_p2p & operator=(const async_conn_p2p&) = delete;
 
-    virtual int isend(const void *buf, size_t count, non_block_handle *req) = 0;
+    /*virtual int isend(const void *buf, size_t count, non_block_handle *req) = 0;
     virtual int irecv(void *buf, size_t count, non_block_handle *req) = 0;
     virtual bool wait(non_block_handle* req) = 0;
     virtual int oneside_send_pre(const void *buf, size_t count, non_block_handle *req, oneside_info *peer_info) = 0;
     virtual int oneside_recv_pre(void *buf, size_t count, non_block_handle *req, oneside_info* my_info) = 0;
     virtual bool end_oneside(oneside_info *peer_info) = 0;
 
-    virtual int oneside_isend(oneside_info *peer_info, non_block_handle *req) = 0;
+    virtual int oneside_isend(oneside_info *peer_info, non_block_handle *req) = 0;*/
 };
 
 

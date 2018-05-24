@@ -20,7 +20,7 @@ int main(int argc, char **argv)
             conn_system sys(LOCAL_HOST, LOCAL_PORT + i);
             for(int k = 0;k < process_num;k++){
                 if(k != i) {
-                    rdma_conn_p2p *rdma_conn_object = sys.init(PEER_HOST, PEER_PORT_BASE + k);
+                    rdma_conn_p2p *rdma_conn_object = (rdma_conn_p2p*)sys.init(PEER_HOST, PEER_PORT_BASE + k);
                     ASSERT(rdma_conn_object);
                 }
             }

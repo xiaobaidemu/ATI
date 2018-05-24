@@ -27,6 +27,31 @@ conn_system::conn_system(const char *ip, int port) {
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
 
+    int num_devices;
+    struct ibv_device **dev_list = ibv_get_device_list(&num_devices);
+    if (!dev_list) {
+        ERROR("Failed to get IB devices list\n");
+        ASSERT(0);
+    }
+    struct ibv_device *ibv_dev;
+    for (int i = 0; i < num_devices; i++) {
+        ibv_dev = dev_list[i];
+        context = ibv_open_device(ibv_dev);
+        if(context) break;
+    }
+
+    rx_depth = RX_DEPTH;
+    ib_port = 1;//default is 1
+    if(!(context)) {
+        ERROR("Cannot open any ibv_device.\n");
+        ASSERT(0);
+    }
+
+    CCALL(ibv_query_port(context, ib_port, &(portinfo)));
+    channel = ibv_create_comp_channel(context); ASSERT(channel);
+    pd = ibv_alloc_pd(context); ASSERT(pd);
+    cq = ibv_create_cq(context, rx_depth*10 , this, channel, 0); ASSERT(cq);
+
     lis = env.create_listener(my_listen_ip, my_listen_port);
     lis->OnAccept = [&](listener*,  connection* conn){
         set_passive_connection_callback(conn);
@@ -65,6 +90,9 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         _lock.release();
     }
     ASSERT(conn_object);
+    conn_object->conn_sys = this;
+    conn_object->send_rdma_conn.ib_port  = this->ib_port;
+    conn_object->send_rdma_conn.portinfo = this->portinfo;
 
     socket_connection *send_conn = env.create_connection(peer_ip, peer_port);
     set_active_connection_callback(send_conn, key);
@@ -107,8 +135,8 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
 
 void conn_system::run_poll_thread(rdma_conn_p2p* conn_object){
     //conn_object->poll_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_func, conn_object, conn_object));
-    conn_object->poll_send_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_send_func, conn_object, conn_object));
-    conn_object->poll_recv_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_recv_func, conn_object, conn_object));
+    //conn_object->poll_send_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_send_func, conn_object, conn_object));
+    //conn_object->poll_recv_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_recv_func, conn_object, conn_object));
 }
 void conn_system::set_active_connection_callback(connection *send_conn, std::string key) {
     send_conn->OnConnect = [key, this](connection* conn) {

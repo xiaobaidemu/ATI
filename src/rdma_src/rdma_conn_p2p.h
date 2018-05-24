@@ -2,13 +2,13 @@
 #ifndef SENDRECV_RDMA_CONN_P2P_H
 #define SENDRECV_RDMA_CONN_P2P_H
 
-#include "rdma_conn_p2p.h"
 #include "rdma_resource.h"
 #include <queue>
 #include <sendrecv.h>
 #include <sys/eventfd.h>
-#include "conn_system.h"
 #include <at_sendrecv.h>
+
+class conn_system;
 
 class rdma_conn_p2p : public async_conn_p2p
 {
@@ -16,6 +16,7 @@ class rdma_conn_p2p : public async_conn_p2p
 private:
     int send_event_fd ;
     int recv_event_fd ;
+    conn_system *conn_sys;
 private:
     socket_connection *send_socket_conn;
     socket_connection *recv_socket_conn;
@@ -79,7 +80,7 @@ public:
     rdma_conn_p2p & operator=(const rdma_conn_p2p&) = delete;
 
     rdma_conn_p2p();
-    int isend(const void *buf, size_t count, non_block_handle *req);
+    /*int isend(const void *buf, size_t count, non_block_handle *req);
     int irecv(void *buf, size_t count, non_block_handle *req);
     bool wait(non_block_handle* req);
 
@@ -92,9 +93,9 @@ public:
     int hp_isend_init(non_block_handle* req, oneside_info *peer_info);
     int hp_irecv_init(void *buf, size_t count, non_block_handle *req,  int send_times, oneside_info *peer_info);
     int hp_isend(const void *buf, size_t count, non_block_handle *req, oneside_info* peer_info);
-    bool hp_recv_wait(non_block_handle *req, int send_times);// recv side will wait send_times
+    bool hp_recv_wait(non_block_handle *req, int send_times);// recv side will wait send_times*/
 };
 
-
+#include "conn_system.h"
 #endif //SENDRECV_RDMA_CONN_P2P_H
 #endif

@@ -1,6 +1,7 @@
 #ifdef IBEXIST
 #ifndef SENDRECV_SYSTEM_H
 #define SENDRECV_SYSTEM_H
+#define RX_DEPTH               (1024)
 #include<iostream>
 #include <common/common.h>
 #include <sendrecv.h>
@@ -27,6 +28,7 @@ typedef safemap<std::string, rdma_conn_p2p*> CONN_MAP;
 
 class conn_system : public async_conn_system
 {
+    friend class rdma_conn_p2p;
 public:
     conn_system(const conn_system&) = delete;
     conn_system(conn_system && ) = delete;
@@ -41,6 +43,15 @@ private:
     int   my_listen_port;
 
     CONN_MAP connecting_map;
+
+    //context,pd,cq,complete_channel
+    struct ibv_context	*context;
+    struct ibv_comp_channel *channel;
+    struct ibv_pd		*pd;
+    struct ibv_cq		*cq;
+    int			        rx_depth;
+    int                 ib_port;
+    struct ibv_port_attr     portinfo;
 
 public:
     conn_system(const char* my_listen_ip, int my_listen_port);

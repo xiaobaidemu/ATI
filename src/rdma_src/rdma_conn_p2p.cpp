@@ -4,7 +4,7 @@
 #include "errno.h"
 #include <sys/sysinfo.h>
 
-#define RX_DEPTH               (1024)
+//#define RX_DEPTH               (1024)
 #define MAX_INLINE_LEN         (128)
 #define MAX_SGE_LEN            (1)
 #define MAX_SMALLMSG_SIZE      (1024*1024+1)
@@ -42,35 +42,10 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
         ASSERT(0);
     }
 
-    rdma_conn_info.rx_depth = RX_DEPTH;
-    struct ibv_device *ibv_dev;
-    for (int i = 0; i < num_devices; i++) {
-        ibv_dev = dev_list[i];
-        rdma_conn_info.context = ibv_open_device(ibv_dev);
-        if(rdma_conn_info.context)
-            break;
-    }
-    if(!(rdma_conn_info.context)) {
-        ERROR("Cannot open any ibv_device.\n");
-        ASSERT(0);
-    }
-    rdma_conn_info.ib_port = 1;//default is 1
-
-    CCALL(ibv_query_port(rdma_conn_info.context, rdma_conn_info.ib_port, &(rdma_conn_info.portinfo)));
-    rdma_conn_info.channel = ibv_create_comp_channel(rdma_conn_info.context);
-    ASSERT(rdma_conn_info.channel);
-
-    rdma_conn_info.pd = ibv_alloc_pd(rdma_conn_info.context);
-    ASSERT(rdma_conn_info.pd);
-
-    rdma_conn_info.cq = ibv_create_cq(rdma_conn_info.context, rdma_conn_info.rx_depth*3 , this,
-                                      rdma_conn_info.channel, 0);
-    ASSERT(rdma_conn_info.cq);
-
     struct ibv_qp_init_attr init_attr;
     memset(&init_attr, 0, sizeof(init_attr));
-    init_attr.send_cq = rdma_conn_info.cq;
-    init_attr.recv_cq = rdma_conn_info.cq;
+    init_attr.send_cq = conn_sys->cq;
+    init_attr.recv_cq = conn_sys->cq;
     init_attr.cap.max_send_wr  = MAX_POST_RECV_NUM*2 ;
     init_attr.cap.max_recv_wr  = MAX_POST_RECV_NUM*3 ;
     init_attr.cap.max_send_sge = MAX_SGE_LEN;
@@ -79,7 +54,7 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
     init_attr.sq_sig_all = 1;
     init_attr.qp_context = (void*)this;
 
-    rdma_conn_info.qp = ibv_create_qp(rdma_conn_info.pd, &init_attr);
+    rdma_conn_info.qp = ibv_create_qp(conn_sys->pd, &init_attr);
     //ERROR("errno: %s\n",strerror(errno));
     ASSERT(rdma_conn_info.qp);
 
@@ -87,7 +62,7 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
     memset(&attr, 0, sizeof(attr));
     attr.qp_state = IBV_QPS_INIT;
     attr.pkey_index = 0;
-    attr.port_num   = rdma_conn_info.ib_port;
+    attr.port_num   = conn_sys->ib_port;
     attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE;
 
     if (ibv_modify_qp(rdma_conn_info.qp, &attr,
@@ -101,7 +76,7 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
 
     if(isrecvqp){ //means receiver need to malloc a piece of recvd_buffer space and ibv_post_recv
         char *cache_addr = (char*)malloc(RECVD_BUF_SIZE + MAX_SMALLMSG_SIZE);
-        ibv_mr *buff_mr  = ibv_reg_mr(rdma_conn_info.pd, cache_addr, RECVD_BUF_SIZE + MAX_SMALLMSG_SIZE,
+        ibv_mr *buff_mr  = ibv_reg_mr(conn_sys->pd, cache_addr, RECVD_BUF_SIZE + MAX_SMALLMSG_SIZE,
                                          IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
 
         recv_local_buf_status.buf_info.addr = (uint64_t)cache_addr;
@@ -117,18 +92,18 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
         post_array_mr = new struct ibv_mr*[MAX_POST_RECV_NUM];
 
         for(int i = 0;i < MAX_POST_RECV_NUM;i++){
-            post_array_mr[i] =  ibv_reg_mr(rdma_conn_info.pd, &(post_array[i]), sizeof(send_req_clt_info), IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
+            post_array_mr[i] =  ibv_reg_mr(conn_sys->pd, &(post_array[i]), sizeof(send_req_clt_info), IBV_ACCESS_LOCAL_WRITE|IBV_ACCESS_REMOTE_WRITE);
             CCALL(pp_post_recv(rdma_conn_info.qp, (uintptr_t)(&post_array[i]), post_array_mr[i]->lkey,
                           sizeof(send_req_clt_info), post_array_mr[i]));
         }
-        modify_qp_to_rtr(rdma_conn_info.qp, recv_direction_qp.qpn, recv_direction_qp.lid, rdma_conn_info.ib_port);
+        modify_qp_to_rtr(rdma_conn_info.qp, recv_direction_qp.qpn, recv_direction_qp.lid, conn_sys->ib_port);
         modify_qp_to_rts(rdma_conn_info.qp);
         SUCC("Finish create the recv qp ~~~~~~~.\n");
     }
     else{
         //ibv_post_recv
         ctl_flow_info *ctl_flow = ctl_flow_pool.pop();ASSERT(ctl_flow);
-        struct ibv_mr *ctl_flow_mr = ibv_reg_mr(rdma_conn_info.pd, ctl_flow, sizeof(ctl_flow_info),
+        struct ibv_mr *ctl_flow_mr = ibv_reg_mr(conn_sys->pd, ctl_flow, sizeof(ctl_flow_info),
                                  IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
         CCALL(pp_post_recv(rdma_conn_info.qp, (uintptr_t)ctl_flow, ctl_flow_mr->lkey, sizeof(ctl_flow_info), ctl_flow_mr));
         SUCC("Finish Half create the send qp ~~~~~~~.\n");
@@ -237,9 +212,12 @@ int rdma_conn_p2p::pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, ui
     wr.num_sge = 1;
     return ibv_post_send(send_rdma_conn.qp, &wr, &bad_wr);
 }
+void rdma_conn_p2p::clean_used_fd(){
+    send_socket_conn->async_close();
+    recv_socket_conn->async_close();
+}
 
-
-void rdma_conn_p2p::poll_send_func(rdma_conn_p2p *conn) {
+/*void rdma_conn_p2p::poll_send_func(rdma_conn_p2p *conn) {
     struct ibv_wc wc[RX_DEPTH+1];
     int n; bool ret;
     while(issend_running){
@@ -289,7 +267,6 @@ bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
             //ctl_msg related to used_recv_num and recvd_bufsize
             //WARN("xxxxxx %d\n",ack_ctl_info->type);
             if (ack_ctl_info->type == 0) {
-                /*update peer_left_recv_num*/
                 int tmp_used_recv = ack_ctl_info->ctl.used_recv_num;
                 size_t tmp_recvd_bufsize = ack_ctl_info->ctl.recvd_bufsize;
                 //change the send_peer_buf_status.pos_irecv
@@ -738,7 +715,6 @@ void rdma_conn_p2p::reload_post_recv(){
     ctl_info.type = 0;
     ctl_info.ctl.used_recv_num = used_recv_num;
     ctl_info.ctl.recvd_bufsize = recvd_bufsize;
-    /*do something re post_recv*/
     int tmp_used_index = last_used_index + used_recv_num;
     if(tmp_used_index >= MAX_POST_RECV_NUM){
         tmp_used_index %= MAX_POST_RECV_NUM;
@@ -797,10 +773,7 @@ bool rdma_conn_p2p::wait(non_block_handle* req){
     return true;
 }
 
-void rdma_conn_p2p::clean_used_fd(){
-    send_socket_conn->async_close();
-    recv_socket_conn->async_close();
-}
+
 
 
 int rdma_conn_p2p::oneside_send_pre(const void *buf, size_t count, non_block_handle *req, oneside_info *peer_info){
@@ -1060,5 +1033,5 @@ bool rdma_conn_p2p::hp_recv_wait(non_block_handle *req, int send_times){
     req->_lock.release();
     return true;
 }
-
+*/
 #endif
