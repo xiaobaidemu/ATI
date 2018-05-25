@@ -7,12 +7,12 @@
 //#define RX_DEPTH               (1024)
 #define MAX_INLINE_LEN         (128)
 #define MAX_SGE_LEN            (1)
-#define MAX_SMALLMSG_SIZE      (1024*1024+1)
+#define MAX_SMALLMSG_SIZE      (1024+1)
 //#define MAX_SMALLMSG_SIZE      (1024*1024*512+1) 
 #define MAX_POST_RECV_NUM      (2048)
-#define RECVD_BUF_SIZE         (1024*1024*16)
+#define RECVD_BUF_SIZE         (1024*1024*2)
 //#define RECVD_BUF_SIZE         (1024LL*1204*1024*2)
-#define THREHOLD_RECVD_BUFSIZE (1024*1024*16)
+#define THREHOLD_RECVD_BUFSIZE (1024*1024)
 //#define THREHOLD_RECVD_BUFSIZE (1024LL*1024*1024)
 #define IMM_DATA_MAX_MASK      (0x80000000)
 #define IMM_DATA_SMALL_MASK    (0x7fffffff)
@@ -35,15 +35,14 @@ void rdma_conn_p2p::nofity_system(int event_fd)
 
 void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool isrecvqp){
     //test whether there were ibv_device
-    int num_devices;
-    struct ibv_device **dev_list = ibv_get_device_list(&num_devices);
-    if (!dev_list) {
-        ERROR("Failed to get IB devices list\n");
-        ASSERT(0);
-    }
-
     struct ibv_qp_init_attr init_attr;
     memset(&init_attr, 0, sizeof(init_attr));
+    if(conn_sys==nullptr)
+        ERROR("conn_sys is null !!!!!!!!!! isrecvqp:%d\n", isrecvqp);
+    ASSERT(conn_sys);
+    if(conn_sys->cq == nullptr)
+        ERROR("cq is null!!!!!!!!!!!\n");
+    ASSERT(conn_sys->cq);
     init_attr.send_cq = conn_sys->cq;
     init_attr.recv_cq = conn_sys->cq;
     init_attr.cap.max_send_wr  = MAX_POST_RECV_NUM*2 ;

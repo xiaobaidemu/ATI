@@ -8,7 +8,7 @@
 
 int main(int argc, char **argv)
 {
-    int process_num = 2;//default
+    int process_num = 4;//default
     if(argc > 1)
         process_num = atoi(argv[1]);
     SUCC("READY to START %d process.\n", process_num);

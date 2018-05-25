@@ -5,12 +5,12 @@
 conn_system::~conn_system() {
     WARN("Transfer System is ready to close.\n");
     env.dispose();
-    connecting_map.Foreach([](std::string key, rdma_conn_p2p * conn){
+    /*connecting_map.Foreach([](std::string key, rdma_conn_p2p * conn){
         conn->issend_running = false;
         conn->isrecv_running = false;
         conn->poll_send_thread->join();
         conn->poll_recv_thread->join();
-    });
+    });*/
 }
 
 void conn_system::splitkey(const std::string& s, std::string& ip, int &port, const std::string& c)
@@ -51,6 +51,7 @@ conn_system::conn_system(const char *ip, int port) {
     channel = ibv_create_comp_channel(context); ASSERT(channel);
     pd = ibv_alloc_pd(context); ASSERT(pd);
     cq = ibv_create_cq(context, rx_depth*10 , this, channel, 0); ASSERT(cq);
+    SUCC("[%s:%d] CREATE CQ FINISHED.\n", my_listen_ip, my_listen_port);
 
     lis = env.create_listener(my_listen_ip, my_listen_port);
     lis->OnAccept = [&](listener*,  connection* conn){
@@ -82,6 +83,9 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         _lock.acquire();
         if(!connecting_map.InContains(key)){
             conn_object = new rdma_conn_p2p();
+            conn_object->conn_sys = this;
+            conn_object->send_rdma_conn.ib_port  = this->ib_port;
+            conn_object->send_rdma_conn.portinfo = this->portinfo;
             connecting_map.Set(key, conn_object);
         }
         else{
@@ -90,10 +94,7 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         _lock.release();
     }
     ASSERT(conn_object);
-    conn_object->conn_sys = this;
-    conn_object->send_rdma_conn.ib_port  = this->ib_port;
-    conn_object->send_rdma_conn.portinfo = this->portinfo;
-
+    
     socket_connection *send_conn = env.create_connection(peer_ip, peer_port);
     set_active_connection_callback(send_conn, key);
     send_conn->async_connect();
@@ -305,6 +306,11 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                     _lock.acquire();
                     if(!connecting_map.InContains(peer_key)){
                         conn_object = new rdma_conn_p2p();
+                        conn_object->conn_sys = this;
+                        conn_object->send_rdma_conn.ib_port  = this->ib_port;
+                        conn_object->send_rdma_conn.portinfo = this->portinfo;
+                        ASSERT(conn_object->conn_sys); 
+                        ASSERT(conn_object->conn_sys->cq);
                         connecting_map.Set(peer_key, conn_object);
                     }
                     else{
@@ -315,7 +321,10 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 ASSERT(conn_object);
                 conn_object->recv_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
                 conn_object->recv_direction_qp.qpn = ntohl(conn->cur_recv_info.qp_all_info.qp_info.qpn);
-
+                if(conn_object->conn_sys == nullptr){
+                    ITRACE("conn_object->conn_sys is nullptr now.\n");
+                    ERROR("this won't happened.\n");ASSERT(0); 
+                }
                 //ready to send my qp information
 
                 conn_object->create_qp_info(conn_object->recv_rdma_conn, true);
