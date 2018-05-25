@@ -21,30 +21,22 @@ rdma_conn_p2p::rdma_conn_p2p():irecv_info_pool(2000), isend_info_pool(2000) {
     used_recv_num = 0;
     recvd_bufsize = 0;
     last_used_index = 0;
-    issend_running  = true;
-    isrecv_running  = true;
-    send_event_fd = CCALL(eventfd(0, EFD_CLOEXEC));
-    recv_event_fd = CCALL(eventfd(0, EFD_CLOEXEC));
-}
-
-void rdma_conn_p2p::nofity_system(int event_fd)
-{
-    int64_t value = 1;
-    CCALL(write(event_fd, &value, sizeof(value)));
+    _lock_send_ech.acquire();
+    _lock_recv_ech.acquire();
 }
 
 void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool isrecvqp){
     //test whether there were ibv_device
     struct ibv_qp_init_attr init_attr;
     memset(&init_attr, 0, sizeof(init_attr));
-    if(conn_sys==nullptr)
-        ERROR("conn_sys is null !!!!!!!!!! isrecvqp:%d\n", isrecvqp);
-    ASSERT(conn_sys);
-    if(conn_sys->cq == nullptr)
-        ERROR("cq is null!!!!!!!!!!!\n");
-    ASSERT(conn_sys->cq);
-    init_attr.send_cq = conn_sys->cq;
-    init_attr.recv_cq = conn_sys->cq;
+    if(isrecvqp){
+        init_attr.send_cq = conn_sys->cq_recv_qp;
+        init_attr.recv_cq = conn_sys->cq_recv_qp;
+    }
+    else{
+        init_attr.send_cq = conn_sys->cq_send_qp;
+        init_attr.recv_cq = conn_sys->cq_send_qp;
+    }
     init_attr.cap.max_send_wr  = MAX_POST_RECV_NUM*2 ;
     init_attr.cap.max_recv_wr  = MAX_POST_RECV_NUM*3 ;
     init_attr.cap.max_send_sge = MAX_SGE_LEN;
@@ -216,39 +208,7 @@ void rdma_conn_p2p::clean_used_fd(){
     recv_socket_conn->async_close();
 }
 
-/*void rdma_conn_p2p::poll_send_func(rdma_conn_p2p *conn) {
-    struct ibv_wc wc[RX_DEPTH+1];
-    int n; bool ret;
-    while(issend_running){
-        n = ibv_poll_cq(send_rdma_conn.cq, RX_DEPTH+1, wc);
-        if(n < 0){
-            ERROR("some error when poll send_rdma_conn.cq.\n");
-            return;
-        }
-        if(n > 0){
-            //ITR_SPECIAL("ibv_poll_cq send_num:%d.\n", n);
-            ret = do_send_completion(n, wc);
-            ASSERT(ret);
-        }
-    }
-}
-
-void rdma_conn_p2p::poll_recv_func(rdma_conn_p2p *conn) {
-    struct ibv_wc wc[RX_DEPTH+1];
-    int n; bool ret;
-    while(isrecv_running){
-        n = ibv_poll_cq(recv_rdma_conn.cq, RX_DEPTH+1, wc);
-        if(n < 0){
-            ERROR("some error when poll recv_rdma_conn.cq.\n");
-            return;
-        }
-        if(n > 0){
-            //ITR_SPECIAL("ibv_poll_cq recv_num:%d.\n", n);
-            ret = do_recv_completion(n, wc);
-            ASSERT(ret);
-        }
-    }
-}
+/*
 
 bool rdma_conn_p2p::do_send_completion(int n, struct ibv_wc *wc_send){
     for(int i = 0;i < n;i++){

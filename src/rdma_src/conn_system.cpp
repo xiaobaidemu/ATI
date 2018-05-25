@@ -5,12 +5,10 @@
 conn_system::~conn_system() {
     WARN("Transfer System is ready to close.\n");
     env.dispose();
-    /*connecting_map.Foreach([](std::string key, rdma_conn_p2p * conn){
-        conn->issend_running = false;
-        conn->isrecv_running = false;
-        conn->poll_send_thread->join();
-        conn->poll_recv_thread->join();
-    });*/
+    issend_running = false;
+    isrecv_running = false;
+    poll_send_thread->join();
+    poll_recv_thread->join();
 }
 
 void conn_system::splitkey(const std::string& s, std::string& ip, int &port, const std::string& c)
@@ -23,6 +21,8 @@ void conn_system::splitkey(const std::string& s, std::string& ip, int &port, con
 }
 
 conn_system::conn_system(const char *ip, int port) {
+    issend_running  = true;
+    isrecv_running  = true;
     this->my_listen_ip = (char*)malloc(IP_LEN);
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
@@ -50,7 +50,8 @@ conn_system::conn_system(const char *ip, int port) {
     CCALL(ibv_query_port(context, ib_port, &(portinfo)));
     channel = ibv_create_comp_channel(context); ASSERT(channel);
     pd = ibv_alloc_pd(context); ASSERT(pd);
-    cq = ibv_create_cq(context, rx_depth*10 , this, channel, 0); ASSERT(cq);
+    cq_send_qp = ibv_create_cq(context, rx_depth*10, this, channel, 0); ASSERT(cq_send_qp);
+    cq_recv_qp = ibv_create_cq(context, rx_depth*10, this, channel, 0); ASSERT(cq_recv_qp);
     SUCC("[%s:%d] CREATE CQ FINISHED.\n", my_listen_ip, my_listen_port);
 
     lis = env.create_listener(my_listen_ip, my_listen_port);
@@ -67,7 +68,46 @@ conn_system::conn_system(const char *ip, int port) {
     };
     bool success = lis->start_accept();
     ASSERT(success);
-    //usleep(100);
+    run_poll_thread();
+}
+
+void conn_system::poll_send_func() {
+    struct ibv_wc wc[RX_DEPTH+1];
+    int n; bool ret;
+    while(issend_running){
+        n = ibv_poll_cq(cq_send_qp, RX_DEPTH+1, wc);
+        if(n < 0){
+            ERROR("some error when poll send_rdma_conn.cq.\n");
+            return;
+        }
+        if(n > 0){
+            //ITR_SPECIAL("ibv_poll_cq send_num:%d.\n", n);
+            //ret = do_send_completion(n, wc);
+            //ASSERT(ret);
+        }
+    }
+}
+
+void conn_system::poll_recv_func() {
+    struct ibv_wc wc[RX_DEPTH+1];
+    int n; bool ret;
+    while(isrecv_running){
+        n = ibv_poll_cq(cq_recv_qp, RX_DEPTH+1, wc);
+        if(n < 0){
+            ERROR("some error when poll recv_rdma_conn.cq.\n");
+            return;
+        }
+        if(n > 0){
+            //ITR_SPECIAL("ibv_poll_cq recv_num:%d.\n", n);
+            //ret = do_recv_completion(n, wc);
+            //ASSERT(ret);
+        }
+    }
+}
+
+void conn_system::run_poll_thread() {
+    poll_send_thread = new std::thread(std::bind(&conn_system::poll_send_func, this));
+    poll_recv_thread = new std::thread(std::bind(&conn_system::poll_recv_func, this));
 }
 
 async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
@@ -100,9 +140,7 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     send_conn->async_connect();
     IDEBUG("Ready to establish with %s\n", key.c_str());
 
-    uint64_t dummy;
-    CCALL(read(conn_object->send_event_fd, &dummy, sizeof(dummy)));
-    close(conn_object->send_event_fd);
+    conn_object->_lock_send_ech.acquire();
     //fill the conn_object for send_direction
     exchange_qp_data send_direction_data = conn_object->send_direction_qp;
     SUCC("[%s] SEND_direction my_qp_info:   LID 0x%04x, QPN 0x%06x\n", key.c_str(),
@@ -113,9 +151,7 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     SUCC("[%s] SEND_direction send_peer_buf_status: addr 0x%llx, rkey 0x%llx, size 0x%llx, mr 0x%llx\n", key.c_str(),
          (long long)tmp_send_info.addr, (long long)tmp_send_info.rkey, (long long)tmp_send_info.size, (long long)tmp_send_info.buff_mr);
 
-
-    CCALL(read(conn_object->recv_event_fd, &dummy, sizeof(dummy)));
-    close(conn_object->recv_event_fd);
+    conn_object->_lock_recv_ech.acquire();
     exchange_qp_data recv_direction_data = conn_object->recv_direction_qp;
 
     SUCC("[%s] RECV_direction my_qp_info:   LID 0x%04x, QPN 0x%06x\n", key.c_str(),
@@ -129,16 +165,20 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
     SUCC("[===== %s_%d FINISH INIT TO %s.=====]\n", my_listen_ip, my_listen_port, key.c_str());
     //close used fd
     conn_object->clean_used_fd();
-    run_poll_thread(conn_object);
+    //run_poll_thread(conn_object);
     //ERROR("===================\n");
     return conn_object;
 }
 
-void conn_system::run_poll_thread(rdma_conn_p2p* conn_object){
+/*
+void conn_system::run_poll_thread(){
+    poll_cq_thread = new std::thread()
     //conn_object->poll_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_func, conn_object, conn_object));
     //conn_object->poll_send_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_send_func, conn_object, conn_object));
     //conn_object->poll_recv_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_recv_func, conn_object, conn_object));
 }
+*/
+
 void conn_system::set_active_connection_callback(connection *send_conn, std::string key) {
     send_conn->OnConnect = [key, this](connection* conn) {
         rdma_conn_p2p *key_object = nullptr;
@@ -197,7 +237,7 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
             pending_conn->modify_qp_to_rtr(pending_conn->send_rdma_conn.qp, pending_conn->send_direction_qp.qpn,
                                            pending_conn->send_direction_qp.lid, pending_conn->send_rdma_conn.ib_port);
             pending_conn->modify_qp_to_rts(pending_conn->send_rdma_conn.qp);
-            pending_conn->nofity_system(pending_conn->send_event_fd);
+            pending_conn->_lock_send_ech.release();
             //WARN("nofity_system send_event_fd:%d\n",pending_conn->send_event_fd);
         }
 
@@ -277,11 +317,10 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
             IDEBUG("Peer has already recv the qp info from me.(%s)\n", (char*) const_cast<void*>(buffer));
              std::string peer_key = std::string(conn->cur_recv_info.qp_all_info.ip) + "_" +
                                        std::to_string(conn->cur_recv_info.qp_all_info.port);
-                //IDEBUG("recv_conn:key(%s)\n",peer_key.c_str());
 
             rdma_conn_p2p *conn_object = nullptr;
             ASSERT(connecting_map.Get(peer_key, &conn_object));
-            conn_object->nofity_system(conn_object->recv_event_fd);
+            conn_object->_lock_recv_ech.release();
         }
         else{
             if(cur_recvd + length < sizeof(ctl_data)){
@@ -295,7 +334,6 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 ASSERT(conn->cur_recv_info.qp_all_info.type == HEAD_TYPE_EXCH);
                 std::string peer_key = std::string(conn->cur_recv_info.qp_all_info.ip) + "_" +
                                        std::to_string(conn->cur_recv_info.qp_all_info.port);
-                //IDEBUG("recv_conn:key(%s)\n",peer_key.c_str());
 
                 rdma_conn_p2p *conn_object = nullptr;
                 if(connecting_map.InContains(peer_key)){
@@ -309,8 +347,6 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                         conn_object->conn_sys = this;
                         conn_object->send_rdma_conn.ib_port  = this->ib_port;
                         conn_object->send_rdma_conn.portinfo = this->portinfo;
-                        ASSERT(conn_object->conn_sys); 
-                        ASSERT(conn_object->conn_sys->cq);
                         connecting_map.Set(peer_key, conn_object);
                     }
                     else{
@@ -344,7 +380,6 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                 conn->async_send(my_qp_info, sizeof(ctl_data));
             }
         }
-
     };
 }
 #endif

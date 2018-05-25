@@ -14,8 +14,8 @@ class rdma_conn_p2p : public async_conn_p2p
 {
     friend class conn_system;
 private:
-    int send_event_fd ;
-    int recv_event_fd ;
+    lock _lock_send_ech;
+    lock _lock_recv_ech;
     conn_system *conn_sys;
 private:
     socket_connection *send_socket_conn;
@@ -44,9 +44,6 @@ private:
 
     lock _lock;
     lock _lock_for_peer_num;
-    //bool isruning;
-    bool issend_running;
-    bool isrecv_running;
 
     int used_recv_num;
     size_t recvd_bufsize;
@@ -58,7 +55,6 @@ private:
     void poll_send_func(rdma_conn_p2p *conn);
     void poll_recv_func(rdma_conn_p2p *conn);
 
-    void nofity_system(int event_fd);
     void create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool isrecvqp);
     void modify_qp_to_rtr(struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, int ib_port);
     void modify_qp_to_rts(struct ibv_qp *qp);

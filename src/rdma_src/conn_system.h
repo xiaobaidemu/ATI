@@ -43,15 +43,19 @@ private:
     int   my_listen_port;
 
     CONN_MAP connecting_map;
-
     //context,pd,cq,complete_channel
     struct ibv_context	*context;
     struct ibv_comp_channel *channel;
     struct ibv_pd		*pd;
-    struct ibv_cq		*cq;
+    struct ibv_cq		*cq_send_qp;
+    struct ibv_cq       *cq_recv_qp;
     int			        rx_depth;
     int                 ib_port;
     struct ibv_port_attr     portinfo;
+    std::thread *poll_send_thread;
+    std::thread *poll_recv_thread;
+    bool issend_running;
+    bool isrecv_running;
 
 public:
     conn_system(const char* my_listen_ip, int my_listen_port);
@@ -64,9 +68,12 @@ private:
     void set_active_connection_callback(connection * conn, std::string ip_port_key);
     void set_passive_connection_callback(connection * conn);
     void splitkey(const std::string& s, std::string& ip, int &port, const std::string& c);
-    void run_poll_thread(rdma_conn_p2p* conn_object);
+    void run_poll_thread();
+    void poll_recv_func();
+    void poll_send_func();
+
 };
 
 #include "rdma_conn_p2p.h"
-#endif //SENDRECV_SYSTEM_H
+#endif
 #endif
