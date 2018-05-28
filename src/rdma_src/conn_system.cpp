@@ -451,6 +451,7 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
                 }
                 addr_mr_pair *mr_pair = my_conn_p2p->addr_mr_pool.pop();//remember to recycle
                 ASSERT(mr_pair);
+                mr_pair->which_qp  = my_conn_p2p->send_rdma_conn.qp;
                 mr_pair->send_addr = (uintptr_t)ack_ctl_info->big.send_mr->addr;
                 mr_pair->send_mr = ack_ctl_info->big.send_mr;
                 mr_pair->len = ack_ctl_info->big.send_mr->length;
