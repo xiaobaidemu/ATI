@@ -1,5 +1,6 @@
 #ifdef IBEXIST
 #include "conn_system.h"
+#include "rdma_resource.h"
 #include <functional>
 #define IP_LEN 16
 conn_system::~conn_system() {
@@ -120,7 +121,7 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         ASSERT(conn_object);
     }
     else{
-        _lock.acquire();
+        _double_check_lock.acquire();
         if(!connecting_map.InContains(key)){
             conn_object = new rdma_conn_p2p();
             conn_object->conn_sys = this;
@@ -131,7 +132,7 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
         else{
             ASSERT(connecting_map.Get(key, &conn_object));
         }
-        _lock.release();
+        _double_check_lock.release();
     }
     ASSERT(conn_object);
     
@@ -163,21 +164,9 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
          (long long)tmp_recv_info.addr, (long long)tmp_recv_info.rkey, (long long)tmp_recv_info.size, (long long)tmp_recv_info.buff_mr);
 
     SUCC("[===== %s_%d FINISH INIT TO %s.=====]\n", my_listen_ip, my_listen_port, key.c_str());
-    //close used fd
     conn_object->clean_used_fd();
-    //run_poll_thread(conn_object);
-    //ERROR("===================\n");
     return conn_object;
 }
-
-/*
-void conn_system::run_poll_thread(){
-    poll_cq_thread = new std::thread()
-    //conn_object->poll_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_func, conn_object, conn_object));
-    //conn_object->poll_send_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_send_func, conn_object, conn_object));
-    //conn_object->poll_recv_thread = new std::thread(std::bind(&rdma_conn_p2p::poll_recv_func, conn_object, conn_object));
-}
-*/
 
 void conn_system::set_active_connection_callback(connection *send_conn, std::string key) {
     send_conn->OnConnect = [key, this](connection* conn) {
@@ -195,7 +184,6 @@ void conn_system::set_active_connection_callback(connection *send_conn, std::str
         my_qp_info->qp_info.lid = htons(key_object->send_rdma_conn.portinfo.lid);
         my_qp_info->qp_info.qpn = htonl(key_object->send_rdma_conn.qp->qp_num);
         conn->async_send(my_qp_info, sizeof(ctl_data));
-
         WARN("ready to send qp_info to %s (len:%d).\n", key.c_str(), (int)sizeof(ctl_data));
     };
 
@@ -341,7 +329,7 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                     ASSERT(conn_object);
                 }
                 else{
-                    _lock.acquire();
+                    _double_check_lock.acquire();
                     if(!connecting_map.InContains(peer_key)){
                         conn_object = new rdma_conn_p2p();
                         conn_object->conn_sys = this;
@@ -352,7 +340,7 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                     else{
                         ASSERT(connecting_map.Get(peer_key, &conn_object));
                     }
-                    _lock.release();
+                    _double_check_lock.release();
                 }
                 ASSERT(conn_object);
                 conn_object->recv_direction_qp.lid = ntohs(conn->cur_recv_info.qp_all_info.qp_info.lid);
@@ -382,5 +370,236 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
         }
     };
 }
+
+bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
+    for(int i = 0;i < n;i++){
+        struct ibv_wc *wc = wc_send + i;
+        if(wc->status != IBV_WC_SUCCESS){
+            ERROR("some error when do_send_completion (%s).\n",ibv_wc_status_str(wc->status));
+            return false;
+        }
+        enum ibv_wc_opcode op = wc->opcode;
+        if(op == IBV_WC_SEND)
+            continue;
+        if(op == IBV_WC_RECV) {
+            mr_pair_recv *tmp_id = (mr_pair_recv*)(wc->wr_id);
+            struct ibv_qp *my_qp = tmp_id->which_qp;
+            struct ibv_mr *recv_mr = tmp_id->recv_mr;
+            ctl_flow_info *ack_ctl_info = (ctl_flow_info *)(recv_mr->addr);
+            rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)my_qp->qp_context;
+            my_conn_p2p->recv_mr_pool.push(tmp_id);
+            if (ack_ctl_info->type == 0) {
+                int tmp_used_recv = ack_ctl_info->ctl.used_recv_num;
+                size_t tmp_recvd_bufsize = ack_ctl_info->ctl.recvd_bufsize;
+                //change the send_peer_buf_status.pos_irecv
+
+                my_conn_p2p->send_peer_buf_status.pos_irecv = (my_conn_p2p->send_peer_buf_status.pos_irecv + tmp_recvd_bufsize)
+                                                              %my_conn_p2p->send_peer_buf_status.buf_info.size;
+
+                //recycle the recv_mr !!!
+                //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
+                CCALL(my_conn_p2p->pp_post_recv(my_qp, (uintptr_t)ack_ctl_info, recv_mr->lkey,
+                                   sizeof(ctl_flow_info), recv_mr));
+
+                my_conn_p2p->_lock_for_peer_num.acquire();
+                my_conn_p2p->peer_left_recv_num += tmp_used_recv;
+                //WARN("peer_left_recv_num: %d.\n", my_conn_p2p->peer_left_recv_num);
+                while(!my_conn_p2p->unsend_queue.empty()){
+                    if(my_conn_p2p->peer_left_recv_num > 0){
+                        my_conn_p2p->peer_left_recv_num--;
+                        unsend_element element = my_conn_p2p->unsend_queue.front();
+                        my_conn_p2p->unsend_queue.pop();
+                        if(element.is_real_msg){
+                            CCALL(my_conn_p2p->pp_post_write(element.real_msg_info.mr_pair, element.real_msg_info.remote_addr,
+                                                element.real_msg_info.rkey, element.real_msg_info.imm_data));
+                            ITR_POLL("(sending real big/small msg from unsend_queue): recv_buffer %llx, rkey %x, len %d\n",
+                                     (long long)element.real_msg_info.remote_addr, element.real_msg_info.rkey, element.real_msg_info.mr_pair->len);
+                        }
+                        else{
+                            CCALL(my_conn_p2p->pp_post_send(my_qp, (uintptr_t)&(element.req_msg_info.req_msg), 0, sizeof(send_req_clt_info), true, false));
+                            ITR_SEND("(BIG_MSG_REQ sending from unsend_queue): send_addr %llx, len %d, isend_index %d\n",(long long)element.req_msg_info.req_msg.send_mr->addr,
+                                     (int)element.req_msg_info.req_msg.send_mr->length, element.req_msg_info.req_msg.isend_index);
+                        }
+                        //WARN("xxx peer_left_recv_num :%d size of unsend_queue:%d.\n", peer_left_recv_num, unsend_queue.size());
+                    }
+                    else break;
+                }
+                my_conn_p2p->_lock_for_peer_num.release();
+
+            } else {
+                ASSERT(ack_ctl_info->type);
+                if(ack_ctl_info->big.is_oneside){
+                    ITR_POLL("this ack_ctl_info is a one_side pre msg from recv_peer.\n");
+                    //restore the info from peer
+                    uint32_t send_index = ack_ctl_info->big.send_index;
+                    isend_info *isend_ptr = my_conn_p2p->isend_info_pool.get(send_index);
+                    oneside_info* peer_info = (oneside_info*)isend_ptr->req_handle->oneside_info_addr;
+                    ASSERT(peer_info);
+
+                    peer_info->set_oneside_info(ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey,
+                                                ack_ctl_info->big.send_mr, ack_ctl_info->big.index,
+                                                ack_ctl_info->big.send_index, ONE_SIDE_SEND);
+                    isend_ptr->req_handle->_lock.release();
+                    //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
+                    my_conn_p2p->ctl_flow_pool.push(ack_ctl_info);
+                    continue;
+
+                }
+                addr_mr_pair *mr_pair = my_conn_p2p->addr_mr_pool.pop();//remember to recycle
+                ASSERT(mr_pair);
+                mr_pair->send_addr = (uintptr_t)ack_ctl_info->big.send_mr->addr;
+                mr_pair->send_mr = ack_ctl_info->big.send_mr;
+                mr_pair->len = ack_ctl_info->big.send_mr->length;
+                mr_pair->isend_index = ack_ctl_info->big.send_index;
+                uint32_t imm_data = ack_ctl_info->big.index;
+                imm_data |= IMM_DATA_MAX_MASK;
+                //ERROR("imm_data: %d %d\n", imm_data, ack_ctl_info->big.index);
+
+                my_conn_p2p->_lock_for_peer_num.acquire();
+                if(my_conn_p2p->peer_left_recv_num <= 0){
+                    //WARN("===============\n");
+                    my_conn_p2p->unsend_queue.emplace(mr_pair, ack_ctl_info->big.recv_buffer,
+                                         ack_ctl_info->big.rkey, imm_data);
+                    my_conn_p2p->_lock_for_peer_num.release();
+                }
+                else{
+                    my_conn_p2p->peer_left_recv_num--;
+                    my_conn_p2p->_lock_for_peer_num.release();
+                    CCALL(my_conn_p2p->pp_post_write(mr_pair, ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, imm_data));
+                    ITR_POLL("sending real big msg: recv_buffer %llx, rkey %x, len %d\n",
+                             (long long)ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, mr_pair->len);
+                }
+                //push the ack_ctl_info
+                //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
+                my_conn_p2p->ctl_flow_pool.push(ack_ctl_info);
+            }
+        }
+        else if(op == IBV_WC_RDMA_WRITE){
+            //means small msg or big msg have sent
+            addr_mr_pair *mr_pair = (addr_mr_pair*)(wc->wr_id);
+            int isend_index = mr_pair->isend_index;
+            //WARN("========= isend_index %d\n", isend_index);
+            //memset(mr_pair, 0, sizeof(addr_mr_pair));
+            rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)mr_pair->which_qp->qp_context;
+            my_conn_p2p->addr_mr_pool.push(mr_pair);
+            my_conn_p2p->isend_info_pool.get(isend_index)->req_handle->_lock.release();
+        }else{
+            ERROR("unknown type when do_recv_completion");
+            return false;
+        }
+    }
+    return true;
+}
+
+
+bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
+    for(int i = 0;i < n;i++){
+        struct ibv_wc *wc = wc_recv+i;
+        if(wc->status != IBV_WC_SUCCESS){
+            ERROR("some error when do_recv_completion (%s).\n",ibv_wc_status_str(wc->status));
+            return false;
+        }
+        enum ibv_wc_opcode op = wc->opcode;
+        if(op == IBV_WC_SEND)
+            continue;
+        enum RECV_TYPE type;
+        int index = -1;
+        rdma_conn_p2p* my_conn_p2p = nullptr;
+        mr_pair_recv *tmp_id = (mr_pair_recv*)(wc->wr_id);
+        struct ibv_qp *my_qp = tmp_id->which_qp;
+        struct ibv_mr *recv_mr = tmp_id->recv_mr;
+        my_conn_p2p = (rdma_conn_p2p*)my_qp->qp_context;
+        my_conn_p2p->recv_mr_pool.push(tmp_id);
+
+        if(op == IBV_WC_RECV_RDMA_WITH_IMM){
+            uint32_t imm_data = ntohl(wc->imm_data);
+            int type_bit = imm_data >> 31;
+            if(type_bit){//RECV BIG_MSG
+                index = imm_data & IMM_DATA_SMALL_MASK;
+                type  = BIG_WRITE_IMM;
+            }
+            else{
+                index = imm_data; //small_msg_size
+                type = SMALL_WRITE_IMM;
+            }
+
+        }
+        else if(op == IBV_WC_RECV){
+            type = SEND_REQ_MSG;
+        }
+        else{
+            ERROR("capture some unknown op when do_recv_completion.\n");
+            return false;
+        }
+        //the _lock need to be reconsidered
+        my_conn_p2p->_lock.acquire();
+        my_conn_p2p->used_recv_num++;
+        my_conn_p2p->_lock.release();
+        if(type == BIG_WRITE_IMM){
+            irecv_info *big_msg_ptr = my_conn_p2p->irecv_info_pool.get(index);
+            ASSERT(big_msg_ptr);
+            //ITR_SPECIAL("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
+            ASSERT(big_msg_ptr->recv_mr);
+            big_msg_ptr->req_handle->hp_cur_times++;
+            big_msg_ptr->req_handle->_lock.release();
+        }
+        else{
+            if(my_conn_p2p->irecv_queue.empty()){
+                //double check
+                my_conn_p2p->_lock.acquire();
+                if(my_conn_p2p->irecv_queue.empty()){
+                    if(type == SEND_REQ_MSG){
+                        //push the big_msg_req into pending_queue
+                        struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
+                        ASSERT(recv_mr);
+                        send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
+                        pending_send pending_req;
+                        pending_req.is_big = true;
+                        ASSERT(recvd_req->send_mr);
+                        pending_req.big.big_addr = (uintptr_t)recvd_req->send_mr->addr;
+                        pending_req.big.big_mr   = recvd_req->send_mr;
+                        pending_req.big.size     = recvd_req->send_mr->length;
+                        pending_req.big.isend_index = recvd_req->isend_index;
+                        pending_req.big.is_oneside  = recvd_req->is_oneside;
+                        my_conn_p2p->pending_queue.push(pending_req);
+                    } else{
+                        //push the small_msg into pending_queue
+                        ITR_POLL("irecv_queue is empty, Receiving.............\n");
+                        pending_send pending_req;
+                        pending_req.is_big = false;
+                        pending_req.small.size = index;//index means the size of the small msg
+                        pending_req.small.pos  = (char*)my_conn_p2p->recv_local_buf_status.buf_info.addr
+                                                 + my_conn_p2p->recv_local_buf_status.pos_isend;
+                        my_conn_p2p->recv_local_buf_status.pos_isend = (my_conn_p2p->recv_local_buf_status.pos_isend + index)
+                                                                       % my_conn_p2p->recv_local_buf_status.buf_info.size;
+                        my_conn_p2p->pending_queue.push(pending_req);
+                    }
+                }
+                else{
+                    my_conn_p2p->_lock.release();
+                    my_conn_p2p->irecv_queue_not_empty(type, wc, index);
+                    if(my_conn_p2p->recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || my_conn_p2p->used_recv_num >= MAX_POST_RECV_NUM){
+                        ITR_SPECIAL("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
+                                    my_conn_p2p->used_recv_num, (long long)my_conn_p2p->recvd_bufsize);
+                        my_conn_p2p->reload_post_recv();
+                    }
+                    return 1;
+                }
+                my_conn_p2p->_lock.release();
+            }
+            else{//irecv_queue is not empty
+                my_conn_p2p->irecv_queue_not_empty(type, wc, index);
+            }
+        }
+        if(my_conn_p2p->recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || my_conn_p2p->used_recv_num >= MAX_POST_RECV_NUM){
+            ITR_SPECIAL("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
+                        my_conn_p2p->used_recv_num, (long long)my_conn_p2p->recvd_bufsize);
+            my_conn_p2p->reload_post_recv();
+        }
+        //_lock.release();
+    }
+    return true;
+}
+
 #endif
 

@@ -36,7 +36,7 @@ public:
     ~conn_system();
 
 private:
-    lock _lock;//use for double check
+    lock _double_check_lock;//use for double check
     socket_environment env;
     socket_listener   *lis;
     char* my_listen_ip;
@@ -71,6 +71,9 @@ private:
     void run_poll_thread();
     void poll_recv_func();
     void poll_send_func();
+    bool do_send_completion(int n, struct ibv_wc *wc);
+    bool do_recv_completion(int n, struct ibv_wc *wc);
+
 
 };
 

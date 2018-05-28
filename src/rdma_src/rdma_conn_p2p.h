@@ -7,7 +7,18 @@
 #include <sendrecv.h>
 #include <sys/eventfd.h>
 #include <at_sendrecv.h>
-
+//#define RX_DEPTH               (1024)
+#define MAX_INLINE_LEN         (128)
+#define MAX_SGE_LEN            (1)
+#define MAX_SMALLMSG_SIZE      (1024+1)
+//#define MAX_SMALLMSG_SIZE      (1024*1024*512+1)
+#define MAX_POST_RECV_NUM      (2048)
+#define RECVD_BUF_SIZE         (1024*1024*2)
+//#define RECVD_BUF_SIZE         (1024LL*1204*1024*2)
+#define THREHOLD_RECVD_BUFSIZE (1024*1024)
+//#define THREHOLD_RECVD_BUFSIZE (1024LL*1024*1024)
+#define IMM_DATA_MAX_MASK      (0x80000000)
+#define IMM_DATA_SMALL_MASK    (0x7fffffff)
 class conn_system;
 
 class rdma_conn_p2p : public async_conn_p2p
@@ -39,6 +50,7 @@ private:
     std::thread *poll_recv_thread;
     pool<addr_mr_pair>  addr_mr_pool;
     pool<ctl_flow_info> ctl_flow_pool;
+    pool<mr_pair_recv>  recv_mr_pool;
     arraypool<irecv_info> irecv_info_pool;
     arraypool<isend_info> isend_info_pool;
 
@@ -76,9 +88,10 @@ public:
     rdma_conn_p2p & operator=(const rdma_conn_p2p&) = delete;
 
     rdma_conn_p2p();
-    /*int isend(const void *buf, size_t count, non_block_handle *req);
+    int isend(const void *buf, size_t count, non_block_handle *req);
     int irecv(void *buf, size_t count, non_block_handle *req);
     bool wait(non_block_handle* req);
+    /*
 
     int oneside_send_pre(const void *buf, size_t count, non_block_handle *req, oneside_info *peer_info);
     int oneside_recv_pre(void *buf, size_t count, non_block_handle *req, oneside_info* my_info);

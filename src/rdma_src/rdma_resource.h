@@ -104,11 +104,16 @@ public:
 
 struct addr_mr_pair{
     uintptr_t     send_addr;
+    struct ibv_qp *which_qp;
     struct ibv_mr *send_mr;
     uint32_t      len;
     int           isend_index;
-};
+};//for ibv_post_send
 
+struct mr_pair_recv{
+    struct ibv_mr *recv_mr;
+    struct ibv_qp *which_qp;
+};//for ibv_post_recv
 
 
 /*struct send_ack_clt_info{
@@ -133,9 +138,10 @@ enum ONE_SIDE_TYPE{
 };
 
 struct send_req_clt_info{
-    uintptr_t     send_addr;
+    //uintptr_t     send_addr;
     struct ibv_mr *send_mr;
-    uint32_t      len;
+    //struct ibv_qp *which_qp;
+    //uint32_t      len;
     int           isend_index;
     bool          is_oneside;
     bool          is_hp_init;
@@ -151,13 +157,14 @@ struct ctl_flow_info{ //irecver with send these info to isender, isender will po
         struct{
             uintptr_t recv_buffer;
             uint32_t rkey;
-            uintptr_t send_buffer;
+            //uintptr_t send_buffer;
             struct ibv_mr *send_mr;
             int  index;      //use for irecv_info_pool
             int  send_index; //use for isend_info_pool
             bool is_oneside;
         }big;
     };
+
 };
 
 struct pending_send{
@@ -243,10 +250,10 @@ public:
     oneside_info(uintptr_t rb, uint32_t rk, uintptr_t sb, struct ibv_mr *sm, int ri, int wi):
             recv_buffer(rb),rkey(rk), send_buffer(sb), send_mr(sm), read_index(ri), write_index(wi)
     {}
-    void set_oneside_info(uintptr_t rb, uint32_t rk, uintptr_t sb, struct ibv_mr *sm, int ri, int wi, enum ONE_SIDE_TYPE t){
+    void set_oneside_info(uintptr_t rb, uint32_t rk, struct ibv_mr *sm, int ri, int wi, enum ONE_SIDE_TYPE t){
         recv_buffer = rb;
         rkey        = rk;
-        send_buffer = sb;
+        //send_buffer = sb;
         send_mr     = sm;
         read_index  = ri;
         write_index = wi;
@@ -279,6 +286,7 @@ typedef struct status_recv_buf        status_recv_buf;
 typedef struct ctl_flow_info          ctl_flow_info;
 typedef struct send_req_clt_info      send_req_clt_info;
 typedef struct addr_mr_pair           addr_mr_pair;
+typedef struct mr_pair_recv           mr_pair_recv;
 typedef struct irecv_info             irecv_info;
 typedef struct unsend_element         unsend_element;
 typedef struct oneside_info           oneside_info;
