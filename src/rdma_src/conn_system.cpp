@@ -82,9 +82,9 @@ void conn_system::poll_send_func() {
             return;
         }
         if(n > 0){
-            //ITR_SPECIAL("ibv_poll_cq send_num:%d.\n", n);
-            //ret = do_send_completion(n, wc);
-            //ASSERT(ret);
+            ITR_SPECIAL("ibv_poll_cq send_num:%d.\n", n);
+            ret = do_send_completion(n, wc);
+            ASSERT(ret);
         }
     }
 }
@@ -99,9 +99,9 @@ void conn_system::poll_recv_func() {
             return;
         }
         if(n > 0){
-            //ITR_SPECIAL("ibv_poll_cq recv_num:%d.\n", n);
-            //ret = do_recv_completion(n, wc);
-            //ASSERT(ret);
+            ITR_SPECIAL("ibv_poll_cq recv_num:%d.\n", n);
+            ret = do_recv_completion(n, wc);
+            ASSERT(ret);
         }
     }
 }
@@ -127,6 +127,8 @@ async_conn_p2p* conn_system::init(char* peer_ip, int peer_port)
             conn_object->conn_sys = this;
             conn_object->send_rdma_conn.ib_port  = this->ib_port;
             conn_object->send_rdma_conn.portinfo = this->portinfo;
+            conn_object->recv_rdma_conn.ib_port  = this->ib_port;
+            conn_object->recv_rdma_conn.portinfo = this->portinfo;
             connecting_map.Set(key, conn_object);
         }
         else{
@@ -335,6 +337,8 @@ void conn_system::set_passive_connection_callback(connection *recv_conn) {
                         conn_object->conn_sys = this;
                         conn_object->send_rdma_conn.ib_port  = this->ib_port;
                         conn_object->send_rdma_conn.portinfo = this->portinfo;
+                        conn_object->recv_rdma_conn.ib_port  = this->ib_port;
+                        conn_object->recv_rdma_conn.portinfo = this->portinfo;
                         connecting_map.Set(peer_key, conn_object);
                     }
                     else{
