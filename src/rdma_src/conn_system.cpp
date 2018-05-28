@@ -554,8 +554,6 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                 if(my_conn_p2p->irecv_queue.empty()){
                     if(type == SEND_REQ_MSG){
                         //push the big_msg_req into pending_queue
-                        struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
-                        ASSERT(recv_mr);
                         send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
                         pending_send pending_req;
                         pending_req.is_big = true;
@@ -581,7 +579,7 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                 }
                 else{
                     my_conn_p2p->_lock.release();
-                    my_conn_p2p->irecv_queue_not_empty(type, wc, index);
+                    my_conn_p2p->irecv_queue_not_empty(type, recv_mr , index);
                     if(my_conn_p2p->recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || my_conn_p2p->used_recv_num >= MAX_POST_RECV_NUM){
                         ITR_SPECIAL("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
                                     my_conn_p2p->used_recv_num, (long long)my_conn_p2p->recvd_bufsize);
@@ -592,7 +590,7 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                 my_conn_p2p->_lock.release();
             }
             else{//irecv_queue is not empty
-                my_conn_p2p->irecv_queue_not_empty(type, wc, index);
+                my_conn_p2p->irecv_queue_not_empty(type, recv_mr , index);
             }
         }
         if(my_conn_p2p->recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || my_conn_p2p->used_recv_num >= MAX_POST_RECV_NUM){

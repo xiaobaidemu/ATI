@@ -418,16 +418,14 @@ bool rdma_conn_p2p::wait(non_block_handle* req){
     return true;
 }
 
-void rdma_conn_p2p::irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_wc *wc, int index){
+void rdma_conn_p2p::irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_mr *recv_mr, int index){
     int recv_index = irecv_queue.front();
     irecv_queue.pop();
     irecv_info *irecv_ptr = irecv_info_pool.get(recv_index);
     //SUCC("irecv_queue_not_empty irecv_ptr_addr %llx.\n", (long long)irecv_ptr);
     ASSERT(irecv_ptr);
     if(type == SEND_REQ_MSG){
-        struct ibv_mr* recv_mr = (struct ibv_mr*)(wc->wr_id);
         send_req_clt_info *send_req = (send_req_clt_info*)(recv_mr->addr);
-        ASSERT(recv_mr);
 
         ctl_flow_info ack_ctl_info;
         ack_ctl_info.type = 1;
