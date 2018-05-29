@@ -582,7 +582,7 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                     my_conn_p2p->_lock.release();
                     my_conn_p2p->irecv_queue_not_empty(type, recv_mr , index);
                     if(my_conn_p2p->recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || my_conn_p2p->used_recv_num >= MAX_POST_RECV_NUM){
-                        ITR_SPECIAL("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
+                        SPP("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
                                     my_conn_p2p->used_recv_num, (long long)my_conn_p2p->recvd_bufsize);
                         my_conn_p2p->reload_post_recv();
                     }
@@ -595,7 +595,7 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
             }
         }
         if(my_conn_p2p->recvd_bufsize >= THREHOLD_RECVD_BUFSIZE || my_conn_p2p->used_recv_num >= MAX_POST_RECV_NUM){
-            ITR_SPECIAL("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
+            SPP("### (in poll)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
                         my_conn_p2p->used_recv_num, (long long)my_conn_p2p->recvd_bufsize);
             my_conn_p2p->reload_post_recv();
         }

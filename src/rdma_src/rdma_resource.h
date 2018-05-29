@@ -46,12 +46,7 @@ struct exchange_qp_data {
 } __attribute__((packed));
 
 struct unidirection_rdma_conn{
-    //struct ibv_context	*context;
-    //struct ibv_comp_channel *channel;
-    //struct ibv_pd		*pd;
-    //struct ibv_cq		*cq;
     struct ibv_qp		*qp;
-    //int			    rx_depth;
     int                 ib_port;
     struct ibv_port_attr     portinfo;
 };
@@ -115,21 +110,11 @@ struct mr_pair_recv{
     struct ibv_qp *which_qp;
 };//for ibv_post_recv
 
-
-/*struct send_ack_clt_info{
-    uintptr_t recv_addr;
-    uint32_t  rkey;
-    uintptr_t send_addr;
-    struct ibv_mr *send_mr;
-    int       index;
-};*/
 enum RECV_TYPE{
     BIG_WRITE_IMM = 0,
     SMALL_WRITE_IMM,
     SEND_REQ_MSG,
 };
-
-
 
 enum ONE_SIDE_TYPE{
     ONE_SIDE_NONE = 0,

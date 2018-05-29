@@ -3,7 +3,7 @@
 #include "rdma_resource.h"
 #include "errno.h"
 #include <sys/sysinfo.h>
-rdma_conn_p2p::rdma_conn_p2p():irecv_info_pool(2000), isend_info_pool(2000) {
+rdma_conn_p2p::rdma_conn_p2p():irecv_info_pool(100), isend_info_pool(100) {
     peer_left_recv_num = MAX_POST_RECV_NUM;
     used_recv_num = 0;
     recvd_bufsize = 0;
@@ -229,7 +229,6 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         else
             isbig = true;
     }
-
     if(isbig){
         //before post_send ,need to post_recv on send_rdma_qp.qp, this part can be optimized
         //use pool to change the new op
@@ -248,6 +247,7 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
 
         _lock_for_peer_num.acquire();
         if(peer_left_recv_num <= 0){
+            SPP("[send big msg req] peer_left_recv_num = %d.\n", peer_left_recv_num);
             unsend_queue.emplace(req_msg);
             _lock_for_peer_num.release();
             return 1;
@@ -275,6 +275,7 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
 
         _lock_for_peer_num.acquire();
         if(peer_left_recv_num <= 0){
+            SPP("[send small data] peer_left_recv_num = %d.\n", peer_left_recv_num);
             unsend_queue.emplace(mr_pair, send_peer_buf_status.buf_info.addr + pos_s,
                                  send_peer_buf_status.buf_info.rkey, imm_data);
             _lock_for_peer_num.release();
@@ -374,7 +375,7 @@ void rdma_conn_p2p::pending_queue_not_empty(void *buf, size_t count, int index, 
         recv_local_buf_status.pos_irecv = (recv_local_buf_status.pos_irecv + one_pending.small.size)
                                           % recv_local_buf_status.buf_info.size;
         if(recvd_bufsize >= THREHOLD_RECVD_BUFSIZE){
-            ITR_SPECIAL("### (in irecv)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
+            SPP("### (in irecv)used_recv_num (%d), recvd_bufsize (%lld), feedback the situation to sender.###\n",
                         used_recv_num, (long long)recvd_bufsize);
             _lock.acquire();
             reload_post_recv();

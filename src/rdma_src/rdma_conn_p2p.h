@@ -45,9 +45,6 @@ private:
 
     std::queue<pending_send> pending_queue;
     std::queue<int>          irecv_queue;
-    //std::thread *poll_thread;
-    std::thread *poll_send_thread;
-    std::thread *poll_recv_thread;
     pool<addr_mr_pair>  addr_mr_pool;
     pool<ctl_flow_info> ctl_flow_pool;
     pool<mr_pair_recv>  recv_mr_pool;
@@ -77,8 +74,6 @@ private:
     int  pp_post_send(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t lkey, uint32_t len, bool isinline, bool is_singal);
 
     int  pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, uint32_t rkey, uint32_t imm_data);
-    bool do_send_completion(int n, struct ibv_wc *wc);
-    bool do_recv_completion(int n, struct ibv_wc *wc);
     void pending_queue_not_empty(void *buf, size_t count, int index, non_block_handle *req);
     void irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_mr *recv_mr, int index);
 
