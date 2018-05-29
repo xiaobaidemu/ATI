@@ -9,6 +9,6 @@ src_path="/home/cuixiang/hbx/Sendrecv/stencil_comm"
 while read hostip;do
     echo "kill process on ${hostip}"
     ssh -n $hostip "cd ${src_path} && ./kill.sh"
-    process_num=$(ssh -n $hostip  " ps -Af | grep 'test_stencil' | grep -v grep | grep -v qemu | wc -l")
+    process_num=$(ssh -n $hostip  " ps -Af | grep 'test_ata' | grep -v grep | grep -v qemu | wc -l")
     echo "rest procress num $process_num"
 done < start_hostfile

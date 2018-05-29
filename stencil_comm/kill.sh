@@ -5,9 +5,9 @@
 # Created Time: Tue 08 May 2018 11:55:13 AM CST
 #########################################################################
 #!/bin/bash
-pids=$(ps -Af | grep test_stencil | grep -v grep | awk '{print $2}')
+pids=$(ps -Af | grep test_ata | grep -v grep | awk '{print $2}')
 if [[ $pids == "" ]] ; then
-     ps -Af | grep test_stencil | grep -v grep | awk '{print $2}'
+     ps -Af | grep test_ata | grep -v grep | awk '{print $2}'
 fi
 
 for pid in $pids;do
