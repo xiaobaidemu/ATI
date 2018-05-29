@@ -559,9 +559,9 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                         pending_send pending_req;
                         pending_req.is_big = true;
                         ASSERT(recvd_req->send_mr);
-                        //pending_req.big.big_addr = (uintptr_t)recvd_req->send_mr->addr;
-                        pending_req.big.big_mr   = recvd_req->send_mr;
-                        //pending_req.big.size     = recvd_req->send_mr->length;
+                        pending_req.big.big_addr = (uintptr_t)recvd_req->send_addr;
+                        pending_req.big.big_mr      = recvd_req->send_mr;
+                        pending_req.big.size      = recvd_req->len;
                         pending_req.big.isend_index = recvd_req->isend_index;
                         pending_req.big.is_oneside  = recvd_req->is_oneside;
                         my_conn_p2p->pending_queue.push(pending_req);

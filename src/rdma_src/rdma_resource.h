@@ -138,10 +138,10 @@ enum ONE_SIDE_TYPE{
 };
 
 struct send_req_clt_info{
-    //uintptr_t     send_addr;
+    uintptr_t     send_addr;
     struct ibv_mr *send_mr;
     //struct ibv_qp *which_qp;
-    //uint32_t      len;
+    uint32_t      len;
     int           isend_index;
     bool          is_oneside;
     bool          is_hp_init;
@@ -171,8 +171,8 @@ struct pending_send{
     bool is_big;//true : big msg_request
     union{
         struct{
-            //size_t size;
-            //uintptr_t big_addr;
+            size_t size;
+            uintptr_t big_addr;
             struct ibv_mr *big_mr;
             int    isend_index;
             bool   is_oneside;

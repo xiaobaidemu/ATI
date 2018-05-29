@@ -239,7 +239,9 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         CCALL(pp_post_recv(send_rdma_conn.qp, (uintptr_t)ack_ctl_addr, mr->lkey, sizeof(ctl_flow_info), mr));
 
         send_req_clt_info req_msg;
+        req_msg.send_addr  = (uintptr_t)const_cast<void*>(buf);
         req_msg.send_mr    = ibv_reg_mr(conn_sys->pd, const_cast<void*>(buf), count, IBV_ACCESS_LOCAL_WRITE);
+        req_msg.len        = count;
         req_msg.isend_index = isend_index;
         req_msg.is_oneside  = false;
         isend_ptr->send_mr  = req_msg.send_mr;
