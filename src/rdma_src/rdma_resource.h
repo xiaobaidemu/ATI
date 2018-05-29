@@ -171,8 +171,8 @@ struct pending_send{
     bool is_big;//true : big msg_request
     union{
         struct{
-            size_t size;
-            uintptr_t big_addr;
+            //size_t size;
+            //uintptr_t big_addr;
             struct ibv_mr *big_mr;
             int    isend_index;
             bool   is_oneside;

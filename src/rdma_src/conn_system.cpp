@@ -510,7 +510,7 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
         enum RECV_TYPE type;
         int index = -1;
         rdma_conn_p2p* my_conn_p2p = nullptr;
-        mr_pair_recv *tmp_id = (mr_pair_recv*)(wc->wr_id);
+        mr_pair_recv  *tmp_id = (mr_pair_recv*)(wc->wr_id);
         struct ibv_qp *my_qp = tmp_id->which_qp;
         struct ibv_mr *recv_mr = tmp_id->recv_mr;
         my_conn_p2p = (rdma_conn_p2p*)my_qp->qp_context;
@@ -527,8 +527,8 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                 index = imm_data; //small_msg_size
                 type = SMALL_WRITE_IMM;
             }
-
         }
+
         else if(op == IBV_WC_RECV){
             type = SEND_REQ_MSG;
         }
@@ -559,9 +559,9 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                         pending_send pending_req;
                         pending_req.is_big = true;
                         ASSERT(recvd_req->send_mr);
-                        pending_req.big.big_addr = (uintptr_t)recvd_req->send_mr->addr;
+                        //pending_req.big.big_addr = (uintptr_t)recvd_req->send_mr->addr;
                         pending_req.big.big_mr   = recvd_req->send_mr;
-                        pending_req.big.size     = recvd_req->send_mr->length;
+                        //pending_req.big.size     = recvd_req->send_mr->length;
                         pending_req.big.isend_index = recvd_req->isend_index;
                         pending_req.big.is_oneside  = recvd_req->is_oneside;
                         my_conn_p2p->pending_queue.push(pending_req);
