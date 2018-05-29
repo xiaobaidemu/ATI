@@ -157,7 +157,7 @@ struct ctl_flow_info{ //irecver with send these info to isender, isender will po
         struct{
             uintptr_t recv_buffer;
             uint32_t rkey;
-            //uintptr_t send_buffer;
+            uintptr_t send_buffer;
             struct ibv_mr *send_mr;
             int  index;      //use for irecv_info_pool
             int  send_index; //use for isend_info_pool

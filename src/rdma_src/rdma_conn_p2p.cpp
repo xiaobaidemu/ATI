@@ -257,7 +257,7 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         _lock_for_peer_num.release();
 
         CCALL(pp_post_send(send_rdma_conn.qp, (uintptr_t)&req_msg, 0, sizeof(req_msg), true, false));
-        ITR_SEND("(BIG_MSG_REQ sending...) send_addr %llx, len %d, isend_index %d\n",(long long)req_msg.send_mr->addr,(int)count, isend_index);
+        ITR_SEND("(BIG_MSG_REQ sending...) send_addr %llx, len %d, isend_index %d\n",(long long)req_msg.send_addr,(int)count, isend_index);
     }
     else{
         //this part should be reconsider
@@ -342,7 +342,7 @@ void rdma_conn_p2p::pending_queue_not_empty(void *buf, size_t count, int index, 
         ack_ctl_info.type = 1;
         ack_ctl_info.big.rkey = irecv_ptr->recv_mr->rkey;
         ack_ctl_info.big.recv_buffer = (uintptr_t)buf;
-        //ack_ctl_info.big.send_buffer = one_pending.big.big_addr;
+        ack_ctl_info.big.send_buffer = one_pending.big.big_addr;
         ack_ctl_info.big.send_mr   = one_pending.big.big_mr;
         ack_ctl_info.big.index     = index;
         ack_ctl_info.big.send_index = one_pending.big.isend_index;
@@ -358,11 +358,11 @@ void rdma_conn_p2p::pending_queue_not_empty(void *buf, size_t count, int index, 
                                       ack_ctl_info.big.index, ack_ctl_info.big.send_index, ONE_SIDE_RECV);
             irecv_ptr->req_handle->_lock.release();
             ITR_RECV("ONESIDE MSG recving...) rkey %x, recv_addr %llx, send_addr %llx, recv_index %d.\n",
-                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_mr->addr, ack_ctl_info.big.index);
+                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
         }
         else{
             ITR_RECV("(BIG_MSG_ACK recving...) rkey %x, recv_addr %llx, send_addr %llx, recv_index %d.\n",
-                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_mr->addr, ack_ctl_info.big.index);
+                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
         }
     }
     else{ // this is small_msg
@@ -438,7 +438,7 @@ void rdma_conn_p2p::irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_mr *re
         ASSERT(irecv_ptr->recv_mr);
         ack_ctl_info.big.rkey = irecv_ptr->recv_mr->rkey;
         ack_ctl_info.big.recv_buffer = irecv_ptr->recv_addr;
-        //ack_ctl_info.big.send_buffer = send_req->send_addr;
+        ack_ctl_info.big.send_buffer = send_req->send_addr;
         ack_ctl_info.big.send_mr   = send_req->send_mr;
         ack_ctl_info.big.index     = recv_index;//means recv index
         ack_ctl_info.big.send_index = send_req->isend_index;
@@ -454,11 +454,11 @@ void rdma_conn_p2p::irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_mr *re
                                       ack_ctl_info.big.index, ack_ctl_info.big.send_index, ONE_SIDE_RECV);
             irecv_ptr->req_handle->_lock.release();
             ITR_POLL("([ONESIDE pre] sending in thread...) rkey %x, recv_addr %llx send_addr %llx recv_index %d.\n",
-                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_mr->addr, ack_ctl_info.big.index);
+                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
         }
         else{
             ITR_POLL("(BIG_MSG_ACK sending in thread...) rkey %x, recv_addr %llx send_addr %llx recv_index %d.\n",
-                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_mr->addr, ack_ctl_info.big.index);
+                     (int)ack_ctl_info.big.rkey, (long long)ack_ctl_info.big.recv_buffer, (long long)ack_ctl_info.big.send_buffer, ack_ctl_info.big.index);
         }
 
     } else{
