@@ -264,8 +264,8 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         _lock_for_peer_num.release();
 
         CCALL(pp_post_send(send_rdma_conn.qp, (uintptr_t)&req_msg, 0, sizeof(req_msg), true, false));
-        if(isprintf())
-            SPP("(BIG_MSG_REQ sending...) send_addr %llx, len %d, isend_index %d\n",(long long)req_msg.send_addr,(int)count, isend_index);
+        //if(isprintf())
+            //SPP("(BIG_MSG_REQ sending...) send_addr %llx, len %d, isend_index %d\n",(long long)req_msg.send_addr,(int)count, isend_index);
     }
     else{
         //this part should be reconsider
@@ -436,6 +436,8 @@ void rdma_conn_p2p::irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_mr *re
     //SUCC("irecv_queue_not_empty irecv_ptr_addr %llx.\n", (long long)irecv_ptr);
     ASSERT(irecv_ptr);
     if(type == SEND_REQ_MSG){
+        //if(isprintf())
+            //SPP("RECV SEND_REQ_MSG..............\n");
         send_req_clt_info *send_req = (send_req_clt_info*)(recv_mr->addr);
 
         ctl_flow_info ack_ctl_info;

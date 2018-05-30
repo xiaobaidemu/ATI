@@ -545,8 +545,8 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
         if(type == BIG_WRITE_IMM){
             irecv_info *big_msg_ptr = my_conn_p2p->irecv_info_pool.get(index);
             ASSERT(big_msg_ptr);
-            if(isprintf())
-                    SPP("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
+            //if(isprintf())
+                    //SPP("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
             ASSERT(big_msg_ptr->recv_mr);
             big_msg_ptr->req_handle->hp_cur_times++;
             big_msg_ptr->req_handle->_lock.release();
@@ -557,6 +557,8 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
                 my_conn_p2p->_lock.acquire();
                 if(my_conn_p2p->irecv_queue.empty()){
                     if(type == SEND_REQ_MSG){
+                        //if(isprintf())
+                            //SPP("RECV SEND_REQ_MSG..............\n");
                         //push the big_msg_req into pending_queue
                         send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
                         pending_send pending_req;
