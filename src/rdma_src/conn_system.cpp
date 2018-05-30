@@ -471,7 +471,7 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
                     my_conn_p2p->peer_left_recv_num--;
                     my_conn_p2p->_lock_for_peer_num.release();
                     CCALL(my_conn_p2p->pp_post_write(mr_pair, ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, imm_data));
-                    //if(isprrintf())
+                    //if(isprintf())
                        // SPP("sending real big msg: recv_buffer %llx, rkey %x, len %d\n",
                             // (long long)ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, mr_pair->len);
                 }
@@ -488,7 +488,7 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
             rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)mr_pair->which_qp->qp_context;
             my_conn_p2p->addr_mr_pool.push(mr_pair);
             my_conn_p2p->isend_info_pool.get(isend_index)->req_handle->_lock.release();
-            //if(isprrintf())
+            //if(isprintf())
                 //SPP("FINISH send a big data...........\n");
         }else{
             ERROR("unknown type when do_recv_completion");
@@ -545,7 +545,7 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
         if(type == BIG_WRITE_IMM){
             irecv_info *big_msg_ptr = my_conn_p2p->irecv_info_pool.get(index);
             ASSERT(big_msg_ptr);
-            if(isprrintf())
+            if(isprintf())
                     SPP("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
             ASSERT(big_msg_ptr->recv_mr);
             big_msg_ptr->req_handle->hp_cur_times++;

@@ -3,6 +3,13 @@
 #include "rdma_resource.h"
 #include "errno.h"
 #include <sys/sysinfo.h>
+bool rdma_conn_p2p::isprintf(){
+    if(strcmp(conn_sys->my_listen_ip, "192.168.4.28") == 0 && conn_sys->my_listen_port == 8800){
+        return true;
+    }
+    else
+        return false;
+}
 rdma_conn_p2p::rdma_conn_p2p():irecv_info_pool(100), isend_info_pool(100) {
     peer_left_recv_num = MAX_POST_RECV_NUM;
     used_recv_num = 0;
@@ -257,7 +264,8 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         _lock_for_peer_num.release();
 
         CCALL(pp_post_send(send_rdma_conn.qp, (uintptr_t)&req_msg, 0, sizeof(req_msg), true, false));
-        ITR_SEND("(BIG_MSG_REQ sending...) send_addr %llx, len %d, isend_index %d\n",(long long)req_msg.send_addr,(int)count, isend_index);
+        if(isprintf())
+            SPP("(BIG_MSG_REQ sending...) send_addr %llx, len %d, isend_index %d\n",(long long)req_msg.send_addr,(int)count, isend_index);
     }
     else{
         //this part should be reconsider

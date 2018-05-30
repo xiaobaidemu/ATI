@@ -73,7 +73,7 @@ private:
     void poll_send_func();
     bool do_send_completion(int n, struct ibv_wc *wc);
     bool do_recv_completion(int n, struct ibv_wc *wc);
-    bool isprrintf(){
+    bool isprintf(){
         if(strcmp(my_listen_ip, "192.168.4.28") == 0 && my_listen_port == 8800){
             return true;
         }

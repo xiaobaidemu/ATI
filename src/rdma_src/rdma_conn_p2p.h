@@ -76,7 +76,7 @@ private:
     int  pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, uint32_t rkey, uint32_t imm_data);
     void pending_queue_not_empty(void *buf, size_t count, int index, non_block_handle *req);
     void irecv_queue_not_empty(enum RECV_TYPE type, struct ibv_mr *recv_mr, int index);
-
+    bool isprintf();
 public:
     rdma_conn_p2p(const rdma_conn_p2p&) = delete;
     rdma_conn_p2p(rdma_conn_p2p && ) = delete;
