@@ -543,7 +543,8 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
         if(type == BIG_WRITE_IMM){
             irecv_info *big_msg_ptr = my_conn_p2p->irecv_info_pool.get(index);
             ASSERT(big_msg_ptr);
-            //ITR_SPECIAL("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
+            if(isprrintf())
+                    SPP("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
             ASSERT(big_msg_ptr->recv_mr);
             big_msg_ptr->req_handle->hp_cur_times++;
             big_msg_ptr->req_handle->_lock.release();
