@@ -471,8 +471,9 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
                     my_conn_p2p->peer_left_recv_num--;
                     my_conn_p2p->_lock_for_peer_num.release();
                     CCALL(my_conn_p2p->pp_post_write(mr_pair, ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, imm_data));
-                    ITR_POLL("sending real big msg: recv_buffer %llx, rkey %x, len %d\n",
-                             (long long)ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, mr_pair->len);
+                    //if(isprrintf())
+                       // SPP("sending real big msg: recv_buffer %llx, rkey %x, len %d\n",
+                            // (long long)ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, mr_pair->len);
                 }
                 //push the ack_ctl_info
                 //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
@@ -483,11 +484,12 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
             //means small msg or big msg have sent
             addr_mr_pair *mr_pair = (addr_mr_pair*)(wc->wr_id);
             int isend_index = mr_pair->isend_index;
-            //WARN("========= isend_index %d\n", isend_index);
-            //memset(mr_pair, 0, sizeof(addr_mr_pair));
+            // memset(mr_pair, 0, sizeof(addr_mr_pair));
             rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)mr_pair->which_qp->qp_context;
             my_conn_p2p->addr_mr_pool.push(mr_pair);
             my_conn_p2p->isend_info_pool.get(isend_index)->req_handle->_lock.release();
+            //if(isprrintf())
+                //SPP("FINISH send a big data...........\n");
         }else{
             ERROR("unknown type when do_recv_completion");
             return false;
