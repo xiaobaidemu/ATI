@@ -76,6 +76,8 @@ void conn_system::poll_send_func() {
     struct ibv_wc wc[RX_DEPTH+1];
     int n; bool ret;
     while(issend_running){
+        //if(isprintf())
+            //SPP("poll send ____________________\n");
         n = ibv_poll_cq(cq_send_qp, RX_DEPTH+1, wc);
         if(n < 0){
             ERROR("some error when poll send_rdma_conn.cq.\n");
@@ -93,6 +95,8 @@ void conn_system::poll_recv_func() {
     struct ibv_wc wc[RX_DEPTH+1];
     int n; bool ret;
     while(isrecv_running){
+        //if(isprintf())
+            //SPP("poll recv ...............\n");
         n = ibv_poll_cq(cq_recv_qp, RX_DEPTH+1, wc);
         if(n < 0){
             ERROR("some error when poll recv_rdma_conn.cq.\n");
@@ -393,13 +397,13 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
             rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)my_qp->qp_context;
             my_conn_p2p->recv_mr_pool.push(tmp_id);
             if (ack_ctl_info->type == 0) {
+                if(isprintf())
+                    SPP("control info ================= .\n");
                 int tmp_used_recv = ack_ctl_info->ctl.used_recv_num;
                 size_t tmp_recvd_bufsize = ack_ctl_info->ctl.recvd_bufsize;
                 //change the send_peer_buf_status.pos_irecv
-
                 my_conn_p2p->send_peer_buf_status.pos_irecv = (my_conn_p2p->send_peer_buf_status.pos_irecv + tmp_recvd_bufsize)
                                                               %my_conn_p2p->send_peer_buf_status.buf_info.size;
-
                 //recycle the recv_mr !!!
                 //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
                 CCALL(my_conn_p2p->pp_post_recv(my_qp, (uintptr_t)ack_ctl_info, recv_mr->lkey,
@@ -447,11 +451,11 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
                     //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
                     my_conn_p2p->ctl_flow_pool.push(ack_ctl_info);
                     continue;
-
                 }
                 addr_mr_pair *mr_pair = my_conn_p2p->addr_mr_pool.pop();//remember to recycle
                 ASSERT(mr_pair);
                 mr_pair->which_qp  = my_conn_p2p->send_rdma_conn.qp;
+                ASSERT(mr_pair->which_qp->qp_context == my_conn_p2p);
                 mr_pair->send_addr = (uintptr_t)ack_ctl_info->big.send_mr->addr;
                 mr_pair->send_mr = ack_ctl_info->big.send_mr;
                 mr_pair->len = ack_ctl_info->big.send_mr->length;
