@@ -99,7 +99,8 @@ public:
 
 struct addr_mr_pair{
     uintptr_t     send_addr;
-    struct ibv_qp *which_qp;
+    //struct ibv_qp *which_qp;
+    uintptr_t     rdma_conn_object;
     struct ibv_mr *send_mr;
     uint32_t      len;
     int           isend_index;
@@ -107,7 +108,8 @@ struct addr_mr_pair{
 
 struct mr_pair_recv{
     struct ibv_mr *recv_mr;
-    struct ibv_qp *which_qp;
+    //struct ibv_qp *which_qp;
+    uintptr_t     rdma_conn_object;
 };//for ibv_post_recv
 
 enum RECV_TYPE{

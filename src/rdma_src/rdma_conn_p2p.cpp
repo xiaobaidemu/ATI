@@ -140,7 +140,8 @@ int rdma_conn_p2p::pp_post_recv(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t 
     list.lkey = lkey;
 
     mr_pair_recv* tmp_id = recv_mr_pool.pop();
-    tmp_id->which_qp = qp; tmp_id->recv_mr  = mr;
+    tmp_id->rdma_conn_object = (uintptr_t)this; tmp_id->recv_mr  = mr;
+    //tmp_id->which_qp = qp; tmp_id->recv_mr  = mr;
     wr.wr_id   = (uintptr_t)tmp_id;
     wr.sg_list = &list;
     wr.num_sge = 1;
@@ -271,7 +272,8 @@ int rdma_conn_p2p::isend(const void *buf, size_t count, non_block_handle *req){
         //this part should be reconsider
         addr_mr_pair *mr_pair = addr_mr_pool.pop();//remember to recycle
         ASSERT(mr_pair);
-        mr_pair->which_qp  = send_rdma_conn.qp;
+        //mr_pair->which_qp  = send_rdma_conn.qp;
+        mr_pair->rdma_conn_object = (uintptr_t)this;
         mr_pair->send_addr = (uintptr_t)const_cast<void*>(buf);
         mr_pair->send_mr   = ibv_reg_mr(conn_sys->pd, const_cast<void*>(buf), count, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
         isend_ptr->send_mr = mr_pair->send_mr;
