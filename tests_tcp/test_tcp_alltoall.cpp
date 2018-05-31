@@ -36,28 +36,30 @@ int main(int argc, char **argv){
             }
             std::vector<non_block_handle> send_handlers(process_num);
             std::vector<non_block_handle> recv_handlers(process_num);
-            for(int des = 0;des < process_num;++des){
-                if(des != i){
-                    comm_list[des]->isend(send_data, DATA_LENGTH, &send_handlers[des]);
+            for(int iter = 0; iter < 2500; iter++) {
+
+                for (int des = 0; des < process_num; ++des) {
+                    if (des != i) {
+                        comm_list[des]->isend(send_data, DATA_LENGTH, &send_handlers[des]);
+                    }
+
+                }
+                for (int src = 0; src < process_num; ++src) {
+                    if (src != i) {
+                        comm_list[src]->irecv(recv_data + src * DATA_LENGTH, DATA_LENGTH, &recv_handlers[src]);
+                    }
                 }
 
-            }
-            for(int src = 0;src < process_num; ++src){
-                if(src != i){
-                    comm_list[src]->irecv(recv_data + src*DATA_LENGTH, DATA_LENGTH, &recv_handlers[src]);
+                for (int des = 0; des < process_num; ++des) {
+                    if (des != i)
+                        comm_list[des]->wait(&send_handlers[des]);
                 }
-            }
-
-            for(int des = 0;des < process_num; ++des){
-                if(des != i)
-                    comm_list[des]->wait(&send_handlers[des]);
-            }
-            for(int src = 0;src < process_num;++src){
-                if(src != i){
-                    comm_list[src]->wait(&recv_handlers[src]);
-                    ASSERT(memcmp(send_data, recv_data + src*DATA_LENGTH, DATA_LENGTH) == 0);
+                for (int src = 0; src < process_num; ++src) {
+                    if (src != i) {
+                        comm_list[src]->wait(&recv_handlers[src]);
+                        ASSERT(memcmp(send_data, recv_data + src * DATA_LENGTH, DATA_LENGTH) == 0);
+                    }
                 }
-
             }
             WARN("==========%s_%d   finish task.\n", LOCAL_HOST, LOCAL_PORT + i);
             SUCC("[%s:%d] has succeed initing with all other %d process.\n",
