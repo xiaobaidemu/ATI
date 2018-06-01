@@ -36,7 +36,7 @@ void rdma_conn_p2p::create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool 
     init_attr.cap.max_send_sge = MAX_SGE_LEN;
     init_attr.cap.max_inline_data = MAX_INLINE_LEN;
     init_attr.qp_type = IBV_QPT_RC;
-    init_attr.sq_sig_all = 1;
+    init_attr.sq_sig_all = 0;
     init_attr.qp_context = (void*)this;
 
     rdma_conn_info.qp = ibv_create_qp(conn_sys->pd, &init_attr);
@@ -122,7 +122,7 @@ void rdma_conn_p2p::modify_qp_to_rts(struct ibv_qp *qp) {
     memset(&attr, 0, sizeof(attr));
     attr.qp_state = IBV_QPS_RTS;
     attr.timeout = 14;
-    attr.retry_cnt = 1;
+    attr.retry_cnt = 7;
     attr.rnr_retry = 0;
     attr.sq_psn = 0;
     attr.max_rd_atomic = 1;
@@ -165,7 +165,7 @@ int rdma_conn_p2p::pp_post_send(struct ibv_qp *qp, uintptr_t buf_addr, uint32_t 
     }
     else
         wr.wr_id = buf_addr;
-    //if(is_singal) wr.send_flags |= IBV_SEND_SIGNALED;
+    if(is_singal) wr.send_flags = IBV_SEND_SIGNALED;
     wr.sg_list = &list;
     wr.num_sge = 1;
     wr.opcode  = IBV_WR_SEND;
@@ -191,7 +191,7 @@ int rdma_conn_p2p::pp_post_write(addr_mr_pair *mr_pair, uint64_t remote_addr, ui
     list.length = mr_pair->len;
     list.lkey   = mr_pair->send_mr->lkey;
 
-    //wr.send_flags = IBV_SEND_SIGNALED;
+    wr.send_flags = IBV_SEND_SIGNALED;
     wr.wr_id = (uintptr_t)mr_pair;
     wr.opcode = IBV_WR_RDMA_WRITE_WITH_IMM;
     wr.imm_data = htonl(imm_data);

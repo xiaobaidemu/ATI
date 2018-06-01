@@ -22,8 +22,8 @@ void conn_system::splitkey(const std::string& s, std::string& ip, int &port, con
 }
 
 conn_system::conn_system(const char *ip, int port) {
-    issend_running  = true;
-    isrecv_running  = true;
+    issend_running = true;
+    isrecv_running = true;
     this->my_listen_ip = (char*)malloc(IP_LEN);
     strcpy(this->my_listen_ip, ip);
     this->my_listen_port = port;
@@ -387,8 +387,8 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
-        if(op == IBV_WC_SEND)
-            continue;
+        //if(op == IBV_WC_SEND)
+            //continue;
         if(op == IBV_WC_RECV) {
             mr_pair_recv *tmp_id = (mr_pair_recv*)(wc->wr_id);
             //struct ibv_qp *my_qp = tmp_id->which_qp;
@@ -514,8 +514,8 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
-        if(op == IBV_WC_SEND)
-            continue;
+        //if(op == IBV_WC_SEND)
+            //continue;
         enum RECV_TYPE type;
         int index = -1;
         mr_pair_recv  *tmp_id = (mr_pair_recv*)(wc->wr_id);
