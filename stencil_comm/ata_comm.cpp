@@ -139,28 +139,29 @@ int main(int argc, char* argv[])
         }
 
         //if(myrank == NOW_RANK) 
-        SUCC("[rank:%d] iter %d. (isend)\n", myrank, iter);
+        //SUCC("[rank:%d] iter %d. (isend)\n", myrank, iter);
         for(int i = 0;i < T;i++){
             if(i != myrank)
                 conn_list[i]->irecv(recv_buf[i], send_bytes, irecv_req+i);
         }
 
         //if(myrank == NOW_RANK) 
-        SUCC("[rank:%d] iter %d.(irecv)\n", myrank, iter);
+        //SUCC("[rank:%d] iter %d.(irecv)\n", myrank, iter);
         for(int i = 0;i < T;i++){
             if(i != myrank)
                 conn_list[i]->wait(isend_req+i);
         }
         //if(myrank == NOW_RANK) 
-        SUCC("[rank:%d] iter %d.(isend_wait)\n", myrank, iter);
+        //SUCC("[rank:%d] iter %d.(isend_wait)\n", myrank, iter);
         for(int i = 0;i < T;i++){
             if(i != myrank)
                 conn_list[i]->wait(irecv_req+i);
         }
         //if(myrank == NOW_RANK) 
-            SUCC("[rank:%d] iter %d.(irecv_wait)\n", myrank, iter);
+        SUCC("[rank:%d] iter %d.(irecv_wait)\n", myrank, iter);
     }
     double time_consume = _timer.elapsed();
     SUCC("time %.6lfs\n", time_consume);
+    sleep(1);
 
 }
