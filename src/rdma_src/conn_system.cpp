@@ -51,8 +51,8 @@ conn_system::conn_system(const char *ip, int port) {
     CCALL(ibv_query_port(context, ib_port, &(portinfo)));
     channel = ibv_create_comp_channel(context); ASSERT(channel);
     pd = ibv_alloc_pd(context); ASSERT(pd);
-    cq_send_qp = ibv_create_cq(context, rx_depth*10, this, channel, 0); ASSERT(cq_send_qp);
-    cq_recv_qp = ibv_create_cq(context, rx_depth*10, this, channel, 0); ASSERT(cq_recv_qp);
+    cq_send_qp = ibv_create_cq(context, rx_depth*20, this, channel, 0); ASSERT(cq_send_qp);
+    cq_recv_qp = ibv_create_cq(context, rx_depth*20, this, channel, 0); ASSERT(cq_recv_qp);
     SUCC("[%s:%d] CREATE CQ FINISHED.\n", my_listen_ip, my_listen_port);
 
     lis = env.create_listener(my_listen_ip, my_listen_port);
