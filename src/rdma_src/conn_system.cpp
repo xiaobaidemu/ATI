@@ -396,7 +396,8 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
-
+        if(op == IBV_WR_SEND)
+            continue;
         if(op == IBV_WC_RECV) {
             mr_pair_recv  *tmp_id = (mr_pair_recv*)(wc->wr_id);
             rdma_conn_p2p *my_conn_p2p = (rdma_conn_p2p*)tmp_id->rdma_conn_object;
@@ -505,8 +506,11 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
+        if(op == IBV_WR_SEND)
+            continue;
         enum RECV_TYPE type;
         int index = -1;
+
         mr_pair_recv  *tmp_id = (mr_pair_recv*)(wc->wr_id);
         rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)(tmp_id->rdma_conn_object);
         struct ibv_mr *recv_mr = tmp_id->recv_mr;
