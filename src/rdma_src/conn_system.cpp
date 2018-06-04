@@ -73,6 +73,11 @@ conn_system::conn_system(const char *ip, int port) {
 }
 
 void conn_system::poll_send_func() {
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    //for (int ii = 0; ii < 14; ++ii)
+        //CPU_SET(ii, &mask), CPU_SET(ii + 28, &mask);
+
     struct ibv_wc wc[RX_DEPTH+1];
     int n; bool ret;
     while(issend_running){
@@ -92,6 +97,10 @@ void conn_system::poll_send_func() {
 }
 
 void conn_system::poll_recv_func() {
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    //for (int ii = 0; ii < 14; ++ii)
+        //CPU_SET(ii, &mask), CPU_SET(ii + 28, &mask);
     struct ibv_wc wc[RX_DEPTH+1];
     int n; bool ret;
     while(isrecv_running){
@@ -387,26 +396,19 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
-        //if(op == IBV_WC_SEND)
-            //continue;
+
         if(op == IBV_WC_RECV) {
-            mr_pair_recv *tmp_id = (mr_pair_recv*)(wc->wr_id);
-            //struct ibv_qp *my_qp = tmp_id->which_qp;
+            mr_pair_recv  *tmp_id = (mr_pair_recv*)(wc->wr_id);
             rdma_conn_p2p *my_conn_p2p = (rdma_conn_p2p*)tmp_id->rdma_conn_object;
             struct ibv_mr *recv_mr = tmp_id->recv_mr;
             ctl_flow_info *ack_ctl_info = (ctl_flow_info *)(recv_mr->addr);
-            //rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)my_qp->qp_context;
             my_conn_p2p->recv_mr_pool.push(tmp_id);
             if (ack_ctl_info->type == 0) {
-                if(isprintf())
-                    SPP("control info ================= .\n");
+                if(isprintf()) SPP("receive control infomation.\n");
                 int tmp_used_recv = ack_ctl_info->ctl.used_recv_num;
                 size_t tmp_recvd_bufsize = ack_ctl_info->ctl.recvd_bufsize;
-                //change the send_peer_buf_status.pos_irecv
                 my_conn_p2p->send_peer_buf_status.pos_irecv = (my_conn_p2p->send_peer_buf_status.pos_irecv + tmp_recvd_bufsize)
                                                               %my_conn_p2p->send_peer_buf_status.buf_info.size;
-                //recycle the recv_mr !!!
-                //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
                 CCALL(my_conn_p2p->pp_post_recv(my_conn_p2p->send_rdma_conn.qp, (uintptr_t)ack_ctl_info, recv_mr->lkey,
                                    sizeof(ctl_flow_info), recv_mr));
 
@@ -429,7 +431,6 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
                             ITR_SEND("(BIG_MSG_REQ sending from unsend_queue): send_addr %llx, len %d, isend_index %d\n",(long long)element.req_msg_info.req_msg.send_mr->addr,
                                      (int)element.req_msg_info.req_msg.send_mr->length, element.req_msg_info.req_msg.isend_index);
                         }
-                        //WARN("xxx peer_left_recv_num :%d size of unsend_queue:%d.\n", peer_left_recv_num, unsend_queue.size());
                     }
                     else break;
                 }
@@ -449,16 +450,13 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
                                                 ack_ctl_info->big.send_mr, ack_ctl_info->big.index,
                                                 ack_ctl_info->big.send_index, ONE_SIDE_SEND);
                     isend_ptr->req_handle->_lock.release();
-                    //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
                     my_conn_p2p->ctl_flow_pool.push(ack_ctl_info);
                     continue;
                 }
                 addr_mr_pair *mr_pair = my_conn_p2p->addr_mr_pool.pop();//remember to recycle
                 ASSERT(mr_pair);
-                //mr_pair->which_qp  = my_conn_p2p->send_rdma_conn.qp;
                 mr_pair->rdma_conn_object = (uintptr_t)my_conn_p2p;
-                //ASSERT(mr_pair->which_qp->qp_context == my_conn_p2p);
-                mr_pair->send_addr = (uintptr_t)ack_ctl_info->big.send_mr->addr;
+                mr_pair->send_addr = (uintptr_t)ack_ctl_info->big.send_buffer;
                 mr_pair->send_mr = ack_ctl_info->big.send_mr;
                 mr_pair->len = ack_ctl_info->big.send_mr->length;
                 mr_pair->isend_index = ack_ctl_info->big.send_index;
@@ -468,7 +466,6 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
 
                 my_conn_p2p->_lock_for_peer_num.acquire();
                 if(my_conn_p2p->peer_left_recv_num <= 0){
-                    //WARN("===============\n");
                     my_conn_p2p->unsend_queue.emplace(mr_pair, ack_ctl_info->big.recv_buffer,
                                          ack_ctl_info->big.rkey, imm_data);
                     my_conn_p2p->_lock_for_peer_num.release();
@@ -481,22 +478,16 @@ bool conn_system::do_send_completion(int n, struct ibv_wc *wc_send){
                        // SPP("sending real big msg: recv_buffer %llx, rkey %x, len %d\n",
                             // (long long)ack_ctl_info->big.recv_buffer, ack_ctl_info->big.rkey, mr_pair->len);
                 }
-                //push the ack_ctl_info
-                //memset(ack_ctl_info, 0, sizeof(ctl_flow_info));
                 my_conn_p2p->ctl_flow_pool.push(ack_ctl_info);
             }
         }
         else if(op == IBV_WC_RDMA_WRITE){
-            //means small msg or big msg have sent
             addr_mr_pair *mr_pair = (addr_mr_pair*)(wc->wr_id);
             int isend_index = mr_pair->isend_index;
-            // memset(mr_pair, 0, sizeof(addr_mr_pair));
-            //rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)mr_pair->which_qp->qp_context;
             rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)mr_pair->rdma_conn_object;
             my_conn_p2p->addr_mr_pool.push(mr_pair);
             my_conn_p2p->isend_info_pool.get(isend_index)->req_handle->_lock.release();
-            //if(isprintf())
-                //SPP("FINISH send a big data...........\n");
+            //if(isprintf()) SPP("FINISH send a big data...........\n");
         }else{
             ERROR("unknown type when do_recv_completion");
             return false;
@@ -514,15 +505,11 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
             return false;
         }
         enum ibv_wc_opcode op = wc->opcode;
-        //if(op == IBV_WC_SEND)
-            //continue;
         enum RECV_TYPE type;
         int index = -1;
         mr_pair_recv  *tmp_id = (mr_pair_recv*)(wc->wr_id);
-        rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)tmp_id->rdma_conn_object;
-        //struct ibv_qp *my_qp = tmp_id->which_qp;
+        rdma_conn_p2p* my_conn_p2p = (rdma_conn_p2p*)(tmp_id->rdma_conn_object);
         struct ibv_mr *recv_mr = tmp_id->recv_mr;
-        //my_conn_p2p = (rdma_conn_p2p*)my_qp->qp_context;
         my_conn_p2p->recv_mr_pool.push(tmp_id);
 
         if(op == IBV_WC_RECV_RDMA_WITH_IMM){
@@ -552,20 +539,17 @@ bool conn_system::do_recv_completion(int n, struct ibv_wc *wc_recv){
         if(type == BIG_WRITE_IMM){
             irecv_info *big_msg_ptr = my_conn_p2p->irecv_info_pool.get(index);
             ASSERT(big_msg_ptr);
-            //if(isprintf())
-                    //SPP("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
+            //if(isprintf()) SPP("big_msg_ptr index:%d, big_msg_ptr_addr:%llx, recv_addr %llx\n", big_msg_ptr->req_handle->index, (long long)big_msg_ptr, (long long)big_msg_ptr->recv_addr);
             ASSERT(big_msg_ptr->recv_mr);
             big_msg_ptr->req_handle->hp_cur_times++;
             big_msg_ptr->req_handle->_lock.release();
         }
         else{
             if(my_conn_p2p->irecv_queue.empty()){
-                //double check
                 my_conn_p2p->_lock.acquire();
                 if(my_conn_p2p->irecv_queue.empty()){
                     if(type == SEND_REQ_MSG){
-                        //if(isprintf())
-                            //SPP("RECV SEND_REQ_MSG..............\n");
+                        //if(isprintf()) SPP("RECV SEND_REQ_MSG..............\n");
                         //push the big_msg_req into pending_queue
                         send_req_clt_info *recvd_req = (send_req_clt_info*)recv_mr->addr;
                         pending_send pending_req;

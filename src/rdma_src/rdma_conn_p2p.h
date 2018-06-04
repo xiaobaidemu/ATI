@@ -12,10 +12,10 @@
 #define MAX_SGE_LEN            (1)
 #define MAX_SMALLMSG_SIZE      (1024*1024+1)
 //#define MAX_SMALLMSG_SIZE      (1024*1024*512+1)
-#define MAX_POST_RECV_NUM      (2048)
-#define RECVD_BUF_SIZE         (1024*1024*10)
+#define MAX_POST_RECV_NUM      (10)
+#define RECVD_BUF_SIZE         (1024*1024)
 //#define RECVD_BUF_SIZE         (1024LL*1204*1024*2)
-#define THREHOLD_RECVD_BUFSIZE (1024*1024*10)
+#define THREHOLD_RECVD_BUFSIZE (1024*512)
 //#define THREHOLD_RECVD_BUFSIZE (1024LL*1024*1024)
 #define IMM_DATA_MAX_MASK      (0x80000000)
 #define IMM_DATA_SMALL_MASK    (0x7fffffff)
@@ -59,10 +59,6 @@ private:
     int last_used_index;
     int peer_left_recv_num;
     std::queue<unsend_element> unsend_queue;
-
-    //void poll_func(rdma_conn_p2p* conn);
-    void poll_send_func(rdma_conn_p2p *conn);
-    void poll_recv_func(rdma_conn_p2p *conn);
 
     void create_qp_info(unidirection_rdma_conn &rdma_conn_info, bool isrecvqp);
     void modify_qp_to_rtr(struct ibv_qp *qp, uint32_t remote_qpn, uint16_t dlid, int ib_port);

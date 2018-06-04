@@ -99,7 +99,6 @@ public:
 
 struct addr_mr_pair{
     uintptr_t     send_addr;
-    //struct ibv_qp *which_qp;
     uintptr_t     rdma_conn_object;
     struct ibv_mr *send_mr;
     uint32_t      len;
